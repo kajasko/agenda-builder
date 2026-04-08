@@ -2,7 +2,7 @@
   "name": "Agenda Builder",
   "short_name": "Agenda",
   "description": "Desktop-class workshop agenda editor with offline support.",
-  "start_url": "/agenda-builder/
+  "start_url": "/agenda-builder/,
   "display": "standalone",
   "background_color": "#13192A",
   "theme_color": "#0D9488",
