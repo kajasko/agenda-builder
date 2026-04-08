@@ -1,0 +1,33 @@
+{
+  "name": "Agenda Builder",
+  "short_name": "Agenda",
+  "description": "Desktop-class workshop agenda editor with offline support.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#13192A",
+  "theme_color": "#0D9488",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "application/x-agenda": [".agenda"]
+      },
+      "icons": [
+        {
+          "src": "icon.png",
+          "sizes": "512x512",
+          "type": "image/png"
+        }
+      ],
+      "launch_type": "single-client"
+    }
+  ]
+}

@@ -1,0 +1,2982 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda Builder</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0D9488">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --font: 'Outfit', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', monospace;
+      --bg: #F0F2F6;
+      --card-bg: #FFFFFF;
+      --border: #E4E7ED;
+      --text: #111827;
+      --muted: #6B7280;
+      --sidebar-bg: #13192A;
+      --sidebar-text: #C9D1E3;
+      --sidebar-active: rgba(13,148,136,0.18);
+      --primary: #0D9488;
+      --primary-dark: #0B7A6F;
+      --primary-light: #F0FDFA;
+      --primary-border: rgba(13,148,136,0.25);
+      --error: #DC2626;
+      --error-bg: #FEF2F2;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.06), 0 10px 20px -5px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 25px -5px rgba(0,0,0,0.1), 0 20px 40px -10px rgba(0,0,0,0.08);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --sidebar-w: 260px;
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html, body { height: 100%; }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); line-height: 1.6; overflow: hidden; }
+
+    /* ─── LAYOUT ─────────────────────────────── */
+    .app-layout { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ─── SIDEBAR ────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w); background: var(--sidebar-bg);
+      display: flex; flex-direction: column; flex-shrink: 0;
+      overflow: hidden; position: relative;
+    }
+    .sidebar::after {
+      content: ''; position: absolute; top: 0; right: 0;
+      width: 1px; height: 100%; background: rgba(255,255,255,0.06);
+    }
+    .sidebar-header {
+      padding: 20px 16px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    }
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--primary), #06b6d4);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-name { font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.02em; text-transform: uppercase; }
+
+    .new-agenda-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.07); color: var(--sidebar-text);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition); flex-shrink: 0;
+    }
+    .new-agenda-btn:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .sidebar-section-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px;
+    }
+    .sidebar-agendas {
+      flex: 1; overflow-y: auto; padding: 4px 8px;
+      scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    .sidebar-agendas::-webkit-scrollbar { width: 4px; }
+    .sidebar-agendas::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+    .agenda-item {
+      display: flex; align-items: center; gap: 8px; padding: 9px 10px;
+      border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent;
+      transition: all var(--transition); position: relative; margin-bottom: 2px;
+    }
+    .agenda-item:hover { background: rgba(255,255,255,0.06); }
+    .agenda-item.active { background: var(--sidebar-active); border-color: rgba(13,148,136,0.3); }
+
+    /* ─── SYNC STATUS DOTS ───────────────────── */
+    .sync-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      transition: background 0.4s ease, box-shadow 0.4s ease; margin-top: 1px;
+    }
+    .sync-dot.local    { background: rgba(255,255,255,0.2); }
+    .sync-dot.unsaved  { background: #FBBF24; animation: pulse-sync 2.2s ease-in-out infinite; }
+    .sync-dot.synced   { background: #34D399; }
+    @keyframes pulse-sync {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(251,191,36,0.5); }
+      60%       { opacity: 0.8; box-shadow: 0 0 0 5px rgba(251,191,36,0); }
+    }
+
+    .agenda-item-info { flex: 1; min-width: 0; }
+    .agenda-item-title { font-size: 0.82rem; font-weight: 500; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+    .agenda-item-meta  { font-size: 0.7rem; color: rgba(255,255,255,0.3); margin-top: 1px; }
+    .agenda-item-del {
+      width: 22px; height: 22px; border-radius: 50%; border: none; background: transparent;
+      color: rgba(255,255,255,0.2); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: all var(--transition); flex-shrink: 0;
+    }
+    .agenda-item:hover .agenda-item-del { opacity: 1; }
+    .agenda-item-del:hover { background: rgba(220,38,38,0.2); color: #f87171; }
+
+    .sidebar-footer {
+      padding: 12px 8px; border-top: 1px solid rgba(255,255,255,0.07);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .sidebar-action-btn {
+      display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+      border-radius: var(--radius-sm); border: none; background: transparent;
+      color: rgba(255,255,255,0.4); font-family: var(--font); font-size: 0.8rem;
+      font-weight: 500; cursor: pointer; transition: all var(--transition);
+      text-align: left; width: 100%;
+    }
+    .sidebar-action-btn:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.8); }
+    .sidebar-action-btn svg { flex-shrink: 0; }
+
+    /* ─── MAIN ───────────────────────────────── */
+    .main-content { flex: 1; overflow-y: auto; overflow-x: hidden; position: relative; }
+
+    /* ─── EMPTY STATE ────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; height: 100%; text-align: center;
+      padding: 40px; animation: fadeIn 0.4s ease;
+    }
+    .empty-state-icon {
+      width: 80px; height: 80px;
+      background: linear-gradient(135deg, var(--primary), #06b6d4);
+      border-radius: 20px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px; box-shadow: 0 8px 24px rgba(13,148,136,0.3);
+    }
+    .empty-state h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+    .empty-state p  { color: var(--muted); margin-bottom: 24px; }
+
+    /* ─── TOP BAR ────────────────────────────── */
+    .editor-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 40px; background: rgba(240,242,246,0.9); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50; gap: 12px;
+    }
+    .topbar-left  { display: flex; align-items: center; gap: 8px; }
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    /* ─── FILE CHIP (topbar) ─────────────────── */
+    .file-chip {
+      display: none; align-items: center; gap: 5px;
+      padding: 4px 10px 4px 8px; border-radius: 20px;
+      font-size: 0.72rem; font-weight: 500; color: var(--muted);
+      border: 1px solid var(--border); background: var(--card-bg);
+      max-width: 200px; overflow: hidden; white-space: nowrap;
+    }
+    .file-chip.visible { display: flex; }
+    .file-chip-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .file-chip.synced   .file-chip-dot { background: #34D399; }
+    .file-chip.unsaved  .file-chip-dot { background: #FBBF24; animation: pulse-sync 2.2s ease-in-out infinite; }
+    .file-chip-name { overflow: hidden; text-overflow: ellipsis; }
+
+    /* ─── SAVE BUTTON STATES ─────────────────── */
+    .btn-save-dirty { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-save-dirty:hover { background: var(--primary-dark); border-color: var(--primary-dark); box-shadow: 0 2px 8px rgba(13,148,136,0.3); }
+    .btn-save-clean { color: var(--muted); border-color: transparent; background: transparent; }
+    .btn-save-clean:hover { background: rgba(0,0,0,0.04); border-color: transparent; box-shadow: none; }
+
+    /* ─── BUTTONS ────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px;
+      border-radius: 20px; font-family: var(--font); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; border: 1px solid var(--border); background: var(--card-bg);
+      color: var(--text); transition: all var(--transition); white-space: nowrap; line-height: 1;
+    }
+    .btn:hover { background: #F9FAFB; border-color: #D1D5DB; box-shadow: var(--shadow-sm); }
+    .btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); box-shadow: 0 2px 8px rgba(13,148,136,0.3); }
+    .btn-sm   { padding: 6px 12px; font-size: 0.78rem; }
+    .btn-ghost { background: transparent; border-color: transparent; color: var(--muted); }
+    .btn-ghost:hover { background: rgba(0,0,0,0.04); border-color: transparent; box-shadow: none; }
+
+    /* ─── EDITOR ─────────────────────────────── */
+    .editor-wrap { animation: fadeIn 0.3s ease; }
+    .container   { max-width: 860px; margin: 0 auto; padding: 40px 40px 80px; }
+
+    /* ─── PAGE HEADER ────────────────────────── */
+    .page-header { margin-bottom: 16px; }
+    .agenda-title {
+      font-size: 2.65rem; font-weight: 800; line-height: 1.15; outline: none; color: #050B14;
+      border-radius: var(--radius-sm); padding: 4px 8px; margin: 0 -8px 6px;
+      transition: background var(--transition), box-shadow var(--transition); min-height: 1.2em;
+    }
+    .agenda-title:hover { background: rgba(13,148,136,0.05); }
+    .agenda-title:focus { background: #fff; box-shadow: 0 0 0 3px rgba(13,148,136,0.15); }
+    .agenda-subtitle {
+      font-size: 1rem; color: var(--muted); outline: none;
+      border-radius: var(--radius-sm); padding: 3px 8px; margin: 0 -8px;
+      min-height: 1.4em; transition: background var(--transition), box-shadow var(--transition);
+    }
+    .agenda-subtitle:hover { background: rgba(13,148,136,0.05); }
+    .agenda-subtitle:focus { background: #fff; box-shadow: 0 0 0 3px rgba(13,148,136,0.15); }
+
+    [contenteditable][data-placeholder]:empty::before {
+      content: attr(data-placeholder); color: #9CA3AF; pointer-events: none;
+    }
+
+    /* ─── SUMMARY TOGGLE ─────────────────────── */
+    .summary-toggle-wrap { margin-bottom: 20px; }
+    #toggleSummaryBtn { color: var(--primary); border-color: var(--primary-border); background: var(--primary-light); }
+    #toggleSummaryBtn:hover { background: rgba(13,148,136,0.12); border-color: var(--primary); }
+
+    /* ─── SUMMARY BOX ────────────────────────── */
+    .summary-box {
+      background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 24px; margin-bottom: 40px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 24px; box-shadow: var(--shadow-sm);
+    }
+    .summary-col-title {
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--primary); margin-bottom: 10px;
+      outline: none; border-radius: 4px; padding: 2px 4px; margin-left: -4px;
+    }
+    .summary-col-title:hover { background: var(--primary-light); }
+    .summary-col-title:focus { background: var(--primary-light); box-shadow: 0 0 0 2px var(--primary-border); }
+    .summary-list { outline: none; padding-left: 18px; }
+    .summary-list:hover { background: rgba(13,148,136,0.03); border-radius: 4px; }
+    .summary-list:focus { background: rgba(13,148,136,0.03); border-radius: 4px; box-shadow: 0 0 0 2px var(--primary-border); }
+    .summary-list li { margin-bottom: 4px; font-size: 0.92rem; }
+
+    /* ─── FLOW WRAPPER ───────────────────────── */
+    .flow-wrapper { position: relative; padding-bottom: 16px; }
+    .flow-wrapper::before {
+      content: ''; position: absolute; top: 20px; bottom: 20px; left: 20px;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--border) 0%, var(--border) 95%, transparent 100%);
+      border-radius: 2px;
+    }
+
+    /* ─── FLOW ITEM ──────────────────────────── */
+    .flow-item {
+      position: relative; display: flex; align-items: flex-start; gap: 16px;
+      margin-bottom: 20px; transition: opacity var(--transition), transform var(--transition);
+    }
+    .flow-item::before {
+      content: ''; position: absolute; left: 14px; top: 24px;
+      width: 14px; height: 14px; background: var(--primary);
+      border: 3px solid var(--bg); border-radius: 50%; z-index: 1;
+      transition: all var(--transition);
+    }
+    .flow-item.is-break::before { background: #9CA3AF; }
+
+    /* ─── DRAG HANDLE ────────────────────────── */
+    .drag-handle {
+      flex-shrink: 0; width: 40px;
+      display: flex; align-items: center; justify-content: flex-end;
+      padding-top: 22px; cursor: grab; color: transparent; transition: color var(--transition);
+    }
+    .flow-item:hover .drag-handle { color: #CBD5E1; }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-handle svg { display: block; }
+
+    /* ─── SORTABLE: DROP INDICATOR ───────────── */
+    .sortable-ghost {
+      background: rgba(13,148,136,0.06) !important;
+      border: 2px dashed var(--primary) !important;
+      border-radius: var(--radius-lg) !important;
+      box-shadow: none !important;
+      opacity: 1 !important;
+    }
+    .sortable-ghost > * { opacity: 0 !important; pointer-events: none !important; }
+    .sortable-ghost::before { display: none !important; }
+    .sortable-drag {
+      box-shadow: 0 32px 80px -8px rgba(0,0,0,0.32), 0 16px 32px -4px rgba(0,0,0,0.16) !important;
+      transform: rotate(2deg) scale(1.02) !important;
+      opacity: 1 !important;
+      z-index: 999 !important;
+    }
+    .sortable-chosen { opacity: 0.6; }
+
+    /* ─── CARD ───────────────────────────────── */
+    .card {
+      flex: 1; background: var(--card-bg); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 22px 24px; position: relative;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow var(--transition), border-color var(--transition); min-width: 0;
+    }
+    .card:hover { box-shadow: var(--shadow-md); border-color: #D8DCE5; }
+    .break-card { background: #F8FAFC; padding: 14px 20px; box-shadow: none; border-style: dashed; }
+    .break-card:hover { box-shadow: none; border-color: #C5CCD6; }
+
+    /* ─── CARD CONTROLS ──────────────────────── */
+    .card-controls {
+      position: absolute; top: -14px; right: 16px;
+      display: flex; gap: 4px; opacity: 0; transition: opacity var(--transition);
+      background: #fff; padding: 3px; border-radius: 20px;
+      border: 1px solid var(--border); box-shadow: var(--shadow-md); z-index: 10;
+    }
+    .flow-item:hover .card-controls { opacity: 1; }
+    .ctrl-btn {
+      background: none; border: none; cursor: pointer;
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); transition: all var(--transition);
+    }
+    .ctrl-btn:hover { background: var(--bg); color: var(--text); }
+    .ctrl-btn.del:hover { background: #FEE2E2; color: var(--error); }
+
+    /* ─── CARD HEADER ────────────────────────── */
+    .card-header {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+    }
+    .break-card .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+
+    /* ─── TIME BADGE ─────────────────────────── */
+    .time-badge {
+      background: #F1F5F9; color: #374151; padding: 6px 12px;
+      border-radius: var(--radius-sm); font-weight: 600; font-size: 0.88rem;
+      display: inline-flex; align-items: center; gap: 5px;
+      border: 1px solid transparent; flex-shrink: 0; transition: all var(--transition);
+    }
+    .time-badge.error { background: var(--error-bg); color: var(--error); border-color: #FECACA; }
+    .time-sep   { color: #9CA3AF; font-size: 0.8em; }
+    .time-input {
+      background: transparent; border: none; font-family: var(--mono);
+      font-size: 0.85rem; font-weight: 600; color: inherit;
+      width: 54px; padding: 0; cursor: pointer; text-align: center;
+    }
+    .time-input:focus { outline: none; color: var(--primary); }
+    .time-input::-webkit-calendar-picker-indicator { display: none; }
+
+    /* ─── DURATION WRAP ──────────────────────── */
+    .duration-wrap {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--primary-light); color: var(--primary);
+      padding: 5px 11px; border-radius: 20px; font-weight: 600;
+      font-size: 0.78rem; border: 1px solid var(--primary-border);
+      flex-shrink: 0; transition: all var(--transition);
+    }
+    .duration-wrap:focus-within { box-shadow: 0 0 0 3px rgba(13,148,136,0.15); border-color: var(--primary); }
+    .duration-wrap.error { background: var(--error-bg); color: var(--error); border-color: #FECACA; }
+    .break-card .duration-wrap { background: #F1F5F9; color: #6B7280; border-color: #E2E8F0; }
+    .duration-input {
+      background: transparent; border: none; font-family: var(--mono);
+      font-size: 0.78rem; font-weight: 600; color: inherit;
+      width: 36px; padding: 0; text-align: center; outline: none;
+      -moz-appearance: textfield;
+    }
+    .duration-input::-webkit-inner-spin-button,
+    .duration-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .duration-unit { font-size: 0.75rem; font-weight: 600; pointer-events: none; }
+
+    /* ─── BLOCK TITLE ────────────────────────── */
+    .block-title {
+      font-size: 1.15rem; font-weight: 700; outline: none;
+      border-radius: 4px; padding: 2px 6px; margin-left: -6px;
+      flex: 1; min-width: 120px; transition: background var(--transition);
+    }
+    .break-card .block-title { font-size: 1rem; color: #4B5563; font-weight: 600; }
+    .block-title:hover { background: rgba(13,148,136,0.05); }
+    .block-title:focus { background: rgba(13,148,136,0.05); box-shadow: 0 0 0 2px var(--primary-border); }
+
+    /* ─── CARD CONTENT ───────────────────────── */
+    .card-content { overflow: hidden; }
+
+    /* ─── CARD INLINE TOOLBAR ────────────────── */
+    .card-toolbar {
+      display: flex; align-items: center; gap: 2px;
+      padding-bottom: 10px; margin-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ctb-btn {
+      width: 28px; height: 26px; border: none; background: transparent;
+      color: var(--muted); cursor: pointer; border-radius: 5px;
+      font-family: var(--font); font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .ctb-btn:hover { background: var(--bg); color: var(--text); }
+    .ctb-btn.active { background: var(--primary-light); color: var(--primary); }
+    .ctb-sep { width: 1px; height: 16px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+
+    /* ─── SINGLE CONTENTEDITABLE EDITOR ─────── */
+    .card-editor {
+      outline: none; font-size: 0.92rem; line-height: 1.65;
+      color: var(--text); min-height: 2em; padding: 2px 0;
+    }
+    .card-editor:empty::before {
+      content: attr(data-placeholder); color: #9CA3AF;
+      pointer-events: none; display: block;
+    }
+    .card-editor p { margin: 0 0 7px; min-height: 1.4em; }
+    .card-editor p:last-child { margin-bottom: 0; }
+    .card-editor h3 {
+      font-size: 1.05rem; font-weight: 700;
+      color: var(--text); margin: 13px 0 5px; line-height: 1.4;
+    }
+    .card-editor h3:first-child { margin-top: 0; }
+    .card-editor ul, .card-editor ol { padding-left: 22px; margin: 4px 0 10px; }
+    .card-editor li { margin-bottom: 4px; }
+    .card-editor .cb-callout {
+      background: var(--primary-light);
+      border-left: 3px solid var(--primary);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 10px 14px; margin: 10px 0;
+      font-size: 0.88rem; color: #0F5449;
+    }
+    .card-editor .cb-callout p,
+    .card-editor .cb-callout h3 { margin: 3px 0; min-height: 1.2em; }
+    .card-editor .cb-callout ul,
+    .card-editor .cb-callout ol { margin: 4px 0 6px; }
+    .card-editor .cb-activity {
+      background: #f9fafb;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 10px 14px; margin: 10px 0;
+      font-size: 0.88rem; color: #374151;
+    }
+    .card-editor .cb-activity p,
+    .card-editor .cb-activity h3 { margin: 3px 0; min-height: 1.2em; }
+    .card-editor .cb-activity ul,
+    .card-editor .cb-activity ol { margin: 4px 0 6px; }
+
+    /* ─── ADD BLOCK BUTTONS ──────────────────── */
+    .add-buttons { display: flex; gap: 12px; padding-left: 56px; margin-top: 8px; }
+    .add-block-btn {
+      flex: 1; border: 2px dashed var(--border); background: transparent;
+      color: var(--muted); padding: 14px; border-radius: var(--radius-md);
+      cursor: pointer; font-family: var(--font); font-weight: 600; font-size: 0.88rem;
+      transition: all var(--transition); display: flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .add-block-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .add-break-btn:hover { border-color: #94A3B8; color: #475569; background: #F8FAFC; }
+
+    /* ─── FLOATING FORMAT TOOLBAR ────────────── */
+    .format-toolbar {
+      position: fixed; display: none; align-items: center; gap: 2px;
+      background: #1F2937; border-radius: 8px; padding: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); z-index: 1000;
+      transform: translateX(-50%) translateY(-8px);
+    }
+    .format-toolbar.visible { display: flex; }
+    .fmt-btn {
+      width: 30px; height: 28px; border: none; background: transparent;
+      color: rgba(255,255,255,0.7); cursor: pointer; border-radius: 5px;
+      font-family: var(--font); font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+    }
+    .fmt-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .fmt-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.15); margin: 0 2px; }
+
+    /* ─── STATUS PILL ────────────────────────── */
+    .status-pill {
+      position: fixed; bottom: 24px; right: 24px;
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(31,41,55,0.92); backdrop-filter: blur(8px);
+      color: rgba(255,255,255,0.85); padding: 7px 13px;
+      border-radius: 20px; font-size: 0.75rem; font-weight: 500;
+      z-index: 200; opacity: 0; transform: translateY(8px);
+      transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none;
+    }
+    .status-pill.visible { opacity: 1; transform: translateY(0); }
+    .status-dot-pill { width: 7px; height: 7px; border-radius: 50%; background: #6EE7B7; flex-shrink: 0; }
+    .status-pill.saving .status-dot-pill { background: #FCD34D; animation: pulse-dot 1s ease-in-out infinite; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ─── COMPACT MODE ───────────────────────── */
+    body.compact-mode .card-content { display: none; }
+    body.compact-mode .flow-wrapper::before { display: none; }
+    body.compact-mode .flow-item::before { display: none; }
+    body.compact-mode .summary-box { display: none !important; }
+    body.compact-mode .summary-toggle-wrap { display: none; }
+    body.compact-mode .flow-item { align-items: center; }
+    body.compact-mode .drag-handle { padding-top: 0; }
+    body.compact-mode .card { padding: 12px 16px; border-radius: var(--radius-sm); }
+    body.compact-mode .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-wrap: nowrap; }
+    body.compact-mode .block-title { font-size: 1rem; }
+    body.compact-mode .add-buttons { padding-left: 16px; }
+
+    /* ─── ANIMATIONS ─────────────────────────── */
+    @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideOutDown { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(16px); } }
+    .block-enter { animation: slideInUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+    .block-exit  { animation: slideOutDown 0.25s ease forwards; pointer-events: none; }
+
+    /* ─── MODAL (base) ───────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px); z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal-box {
+      background: #fff; border-radius: var(--radius-lg); padding: 32px;
+      max-width: 400px; width: calc(100% - 48px);
+      box-shadow: var(--shadow-lg); animation: slideInUp 0.25s ease;
+    }
+    .modal-box h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+    .modal-box > p { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ─── FILE & EXPORT MODAL ────────────────── */
+    .modal-export { max-width: 560px; padding: 28px; }
+    .modal-header {
+      display: flex; align-items: flex-start; justify-content: space-between;
+      margin-bottom: 20px; gap: 16px;
+    }
+    .modal-header-text h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 3px; }
+    .modal-header-text p  { color: var(--muted); font-size: 0.82rem; margin: 0; }
+    .modal-close {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 1px solid var(--border); background: white;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); transition: all var(--transition); flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--bg); color: var(--text); }
+
+    .modal-section-label {
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+    .modal-section-label + .export-grid { margin-bottom: 0; }
+
+    .export-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 0;
+    }
+    .export-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .export-grid + .modal-section-label { margin-top: 18px; }
+
+    .export-card {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+      padding: 13px; border: 1px solid var(--border); border-radius: var(--radius-md);
+      background: white; cursor: pointer; transition: all var(--transition);
+      text-align: left; font-family: var(--font);
+    }
+    .export-card:hover { border-color: var(--primary); background: var(--primary-light); }
+    .export-card:disabled { opacity: 0.4; pointer-events: none; }
+    .export-card-icon {
+      width: 30px; height: 30px; background: var(--bg); border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text); margin-bottom: 7px; transition: all var(--transition);
+    }
+    .export-card:hover .export-card-icon { background: var(--primary); color: white; }
+    .export-card-title { font-size: 0.82rem; font-weight: 600; color: var(--text); }
+    .export-card-desc  { font-size: 0.71rem; color: var(--muted); line-height: 1.4; }
+
+    /* Save card active state in modal */
+    .export-card.has-pending-save { border-color: #FBBF24; background: #FFFBEB; }
+    .export-card.has-pending-save .export-card-icon { background: #FBBF24; color: white; }
+    .export-card.has-pending-save:hover { border-color: var(--primary); background: var(--primary-light); }
+    .export-card.has-pending-save:hover .export-card-icon { background: var(--primary); color: white; }
+
+    /* ─── API unavailable notice ─────────────── */
+    .api-notice {
+      margin-top: 14px; padding: 10px 12px;
+      background: #F0F2F6; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.72rem;
+      color: var(--muted); line-height: 1.55; display: flex; gap: 8px; align-items: flex-start;
+    }
+    .api-notice svg { flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── PRINT ──────────────────────────────── */
+    @media print {
+      /* Force colour rendering in print */
+      *, *::before, *::after {
+        box-sizing: border-box !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      /* ── Body & layout reset ── */
+      body {
+        background: #fff !important;
+        overflow: auto !important;
+        font-family: 'Outfit', system-ui, sans-serif !important;
+        font-size: 9.5pt !important;
+        color: #111827 !important;
+      }
+      .sidebar, .editor-topbar, .card-controls, .add-buttons, .drag-handle,
+      .status-pill, .format-toolbar, .card-toolbar, .summary-toggle-wrap,
+      .modal-overlay { display: none !important; }
+      .app-layout   { display: block !important; height: auto !important; }
+      .main-content { overflow: visible !important; }
+      .editor-wrap  { display: block !important; }
+      /* Always show card content, even in compact mode */
+      .card-content { display: block !important; }
+      [contenteditable] { outline: none !important; box-shadow: none !important; }
+      .time-input, .duration-input { border: none !important; background: transparent !important; }
+
+      /* ── Container ── */
+      .container {
+        max-width: 100% !important;
+        padding: 14pt 18pt 10pt !important;
+      }
+
+      /* ── Page header ── */
+      .page-header {
+        margin-bottom: 13pt !important;
+        padding-bottom: 9pt !important;
+        border-bottom: 2pt solid #0D9488 !important;
+        break-after: avoid !important;
+      }
+      .agenda-title {
+        font-size: 20pt !important;
+        font-weight: 800 !important;
+        line-height: 1.15 !important;
+        color: #050B14 !important;
+        margin-bottom: 3pt !important;
+      }
+      .agenda-subtitle {
+        font-size: 9pt !important;
+        color: #6B7280 !important;
+        line-height: 1.4 !important;
+      }
+
+      /* ── Summary box ── */
+      .summary-box {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 12pt !important;
+        padding: 9pt 11pt !important;
+        margin-bottom: 13pt !important;
+        background: #F9FAFB !important;
+        border: 1pt solid #E4E7ED !important;
+        border-radius: 7pt !important;
+        break-inside: avoid !important;
+      }
+      .summary-col-title {
+        font-size: 6pt !important;
+        color: #0D9488 !important;
+        margin-bottom: 5pt !important;
+      }
+      .summary-list { padding-left: 14pt !important; }
+      .summary-list li { font-size: 8pt !important; margin-bottom: 2pt !important; }
+
+      /* ── Flow wrapper / timeline decorations ── */
+      .flow-wrapper { padding-bottom: 0 !important; }
+      .flow-wrapper::before,
+      .flow-item::before { display: none !important; }
+
+      /* ── Flow item ── */
+      .flow-item {
+        display: flex !important;
+        flex-direction: row !important;   /* keep native row; drag-handle is hidden */
+        align-items: stretch !important;
+        gap: 0 !important;
+        margin-bottom: 5pt !important;
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+
+      /* ── Card (regular block) ── */
+      .card {
+        flex: 1 !important;
+        background: #fff !important;
+        box-shadow: none !important;
+        border: 1pt solid #E4E7ED !important;
+        border-radius: 7pt !important;
+        padding: 7pt 11pt !important;
+      }
+
+      /* ── Break card ── */
+      .break-card {
+        background: #F9FAFB !important;
+        border: 1pt dashed #CBD5E1 !important;
+        padding: 5pt 11pt !important;
+      }
+      .break-card .card-header {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+        border-bottom: none !important;
+      }
+
+      /* ── Card header row ── */
+      .card-header {
+        display: flex !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        gap: 6pt !important;
+        padding-bottom: 5pt !important;
+        margin-bottom: 5pt !important;
+        border-bottom: 0.5pt solid #E4E7ED !important;
+      }
+
+      /* ── Time badge ── */
+      .time-badge {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 3pt !important;
+        background: #F1F5F9 !important;
+        border: none !important;
+        border-radius: 4pt !important;
+        padding: 2pt 7pt !important;
+        font-size: 8pt !important;
+        font-weight: 700 !important;
+        color: #374151 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      .time-badge.error { background: #FEF2F2 !important; color: #DC2626 !important; }
+      .time-sep { color: #9CA3AF !important; }
+
+      /* ── Duration pill ── */
+      .duration-wrap {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 2pt !important;
+        background: #F0FDFA !important;
+        color: #0D9488 !important;
+        border: 0.5pt solid rgba(13,148,136,0.35) !important;
+        border-radius: 10pt !important;
+        padding: 2pt 7pt !important;
+        font-size: 7.5pt !important;
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+      }
+      .break-card .duration-wrap {
+        background: #F1F5F9 !important;
+        color: #6B7280 !important;
+        border-color: #E2E8F0 !important;
+      }
+
+      /* ── Block title ── */
+      .block-title {
+        font-size: 10.5pt !important;
+        font-weight: 700 !important;
+        color: #111827 !important;
+        flex: 1 !important;
+        line-height: 1.3 !important;
+      }
+      .break-card .block-title {
+        font-size: 9pt !important;
+        font-weight: 600 !important;
+        color: #4B5563 !important;
+      }
+
+      /* ── Card editor (body content) ── */
+      .card-editor {
+        font-size: 8.5pt !important;
+        color: #374151 !important;
+        line-height: 1.55 !important;
+      }
+      .card-editor p  { margin: 1pt 0 3pt !important; min-height: 0 !important; }
+      .card-editor h3 {
+        font-size: 6.5pt !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.07em !important;
+        color: #6B7280 !important;
+        margin: 6pt 0 2pt !important;
+        line-height: 1.2 !important;
+      }
+      .card-editor ul,
+      .card-editor ol  { padding-left: 14pt !important; margin: 2pt 0 4pt !important; }
+      .card-editor li  { margin-bottom: 1.5pt !important; }
+
+      /* Callout: keep teal left accent */
+      .card-editor .cb-callout {
+        background: #F0FDFA !important;
+        border-left: 2pt solid #0D9488 !important;
+        border-radius: 0 5pt 5pt 0 !important;
+        padding: 4pt 9pt !important;
+        margin: 3pt 0 !important;
+        color: #0F5449 !important;
+        font-size: 8pt !important;
+      }
+      /* Activity: grey card */
+      .card-editor .cb-activity {
+        background: #F9FAFB !important;
+        border: 0.5pt solid #D1D5DB !important;
+        border-radius: 5pt !important;
+        padding: 4pt 9pt !important;
+        margin: 3pt 0 !important;
+        color: #374151 !important;
+        font-size: 8pt !important;
+      }
+      .card-editor .cb-callout p,
+      .card-editor .cb-callout h3,
+      .card-editor .cb-activity p,
+      .card-editor .cb-activity h3 { margin: 1pt 0 !important; min-height: 0 !important; }
+
+      /* ── Page-break hints ── */
+      .summary-box   { break-inside: avoid !important; }
+      .flow-item     { break-inside: avoid !important; page-break-inside: avoid !important; }
+      .page-header   { break-after:  avoid !important; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- ════ SIDEBAR ════ -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <span class="brand-name">Agenda Builder</span>
+      </div>
+      <button class="new-agenda-btn" id="newAgendaBtn" title="Nová agenda" onclick="createNewAgenda()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      </button>
+    </div>
+    <div style="padding: 12px 8px 4px;">
+      <div class="sidebar-section-label">Moje agendy</div>
+    </div>
+    <div class="sidebar-agendas" id="sidebarList"></div>
+    <div class="sidebar-footer">
+      <button class="sidebar-action-btn" onclick="openExportModal()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Soubor &amp; Export
+      </button>
+      <button class="sidebar-action-btn" onclick="window.print()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"/>
+          <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+        Tisk / PDF
+      </button>
+    </div>
+  </aside>
+
+  <!-- ════ MAIN ════ -->
+  <main class="main-content" id="mainContent">
+
+    <!-- Empty state -->
+    <div class="empty-state" id="emptyState" style="display:none;">
+      <div class="empty-state-icon">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      </div>
+      <h2>Žádná agenda</h2>
+      <p>Vytvořte svoji první workshopovou agendu nebo otevřete existující soubor.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+        <button class="btn btn-primary" onclick="createNewAgenda()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nová agenda
+        </button>
+        <button class="btn" onclick="openFromFile()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+          </svg>
+          Otevřít soubor
+        </button>
+      </div>
+    </div>
+
+    <!-- Editor -->
+    <div class="editor-wrap" id="editorWrap" style="display:none;">
+      <div class="editor-topbar">
+        <div class="topbar-left">
+          <button class="btn btn-ghost btn-sm" id="toggleCompactBtn" onclick="toggleCompactMode()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+            Zobrazit stručně
+          </button>
+        </div>
+        <div class="topbar-right">
+          <div id="topbarFileChip" class="file-chip">
+            <div class="file-chip-dot"></div>
+            <span class="file-chip-name" id="topbarFileName"></span>
+          </div>
+          <button class="btn btn-sm" id="topbarSaveBtn" onclick="saveCurrentFile()"></button>
+          <button class="btn btn-sm" onclick="openExportModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+            </svg>
+            Sdílet &amp; Exportovat
+          </button>
+        </div>
+      </div>
+
+      <div class="container">
+        <div class="page-header">
+          <div id="agenda-title"    class="agenda-title"    contenteditable="true" data-placeholder="Název workshopu"></div>
+          <div id="agenda-subtitle" class="agenda-subtitle" contenteditable="true" data-placeholder="Cíl dne, kontext a instrukce pro tým…"></div>
+        </div>
+
+        <div class="summary-toggle-wrap">
+          <button id="toggleSummaryBtn" class="btn btn-sm" onclick="toggleSummaryBox()"></button>
+        </div>
+
+        <div id="summaryBox" class="summary-box" style="display:none;">
+          <div class="summary-col">
+            <div id="summary-input-title" class="summary-col-title" contenteditable="true">Vstup: Co dostanou účastníci</div>
+            <ul id="summary-input" class="summary-list" contenteditable="true">
+              <li>Vstup 1</li><li>Vstup 2</li>
+            </ul>
+          </div>
+          <div class="summary-col">
+            <div id="summary-output-title" class="summary-col-title" contenteditable="true">Výstup: S čím odcházíme</div>
+            <ul id="summary-output" class="summary-list" contenteditable="true">
+              <li>Výstup 1</li><li>Výstup 2</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flow-wrapper" id="flow-container"></div>
+
+        <div class="add-buttons">
+          <button class="add-block-btn" onclick="addBlock(false)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Přidat blok programu
+          </button>
+          <button class="add-block-btn add-break-btn" onclick="addBlock(true)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Přidat pauzu
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Status pill -->
+<div class="status-pill" id="statusPill">
+  <div class="status-dot-pill"></div>
+  <span id="statusText">Uloženo</span>
+</div>
+
+<!-- Floating format toolbar -->
+<div class="format-toolbar" id="formatToolbar">
+  <button class="fmt-btn" onmousedown="applyFmt(event,'bold')" title="Tučné (Ctrl+B)"><b>B</b></button>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'italic')" title="Kurzíva (Ctrl+I)"><i>I</i></button>
+  <div class="fmt-sep"></div>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'formatBlock','H3')" title="Nadpis">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
+    </svg>
+  </button>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'formatBlock','P')" title="Odstavec">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h6"/>
+    </svg>
+  </button>
+  <div class="fmt-sep"></div>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'insertUnorderedList')" title="Odrážky">
+    <svg width="13" height="11" viewBox="0 0 13 11" fill="currentColor">
+      <circle cx="1.5" cy="1.5" r="1.5"/><rect x="4.5" y="0.5" width="8.5" height="2" rx="1"/>
+      <circle cx="1.5" cy="5.5" r="1.5"/><rect x="4.5" y="4.5" width="8.5" height="2" rx="1"/>
+      <circle cx="1.5" cy="9.5" r="1.5"/><rect x="4.5" y="8.5" width="8.5" height="2" rx="1"/>
+    </svg>
+  </button>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'callout')" title="Callout (zelený blok)">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+  </button>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'activity')" title="Aktivita (šedý blok)">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  </button>
+  <div class="fmt-sep"></div>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'removeFormat')" title="Smazat formátování">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+</div>
+
+<!-- Delete agenda modal -->
+<div class="modal-overlay hidden" id="deleteModal">
+  <div class="modal-box">
+    <h3>Smazat agendu?</h3>
+    <p id="deleteModalText">Tato akce je nevratná.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeDeleteModal()">Zrušit</button>
+      <button class="btn btn-primary" style="background:#DC2626;border-color:#DC2626;" onclick="confirmDeleteAgenda()">Smazat</button>
+    </div>
+  </div>
+</div>
+
+<!-- File & Export modal -->
+<div class="modal-overlay hidden" id="exportModal">
+  <div class="modal-box modal-export">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Soubor &amp; Export</h3>
+        <p>Správa souborů a sdílení agendy</p>
+      </div>
+      <button class="modal-close" onclick="closeExportModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- FILE OPERATIONS -->
+    <div class="modal-section-label">Soubor</div>
+    <div class="export-grid export-grid-3" id="fileOpsGrid">
+      <button class="export-card" onclick="openFromFile()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Otevřít soubor</div>
+        <div class="export-card-desc">Načíst agendu z disku (.agenda, .json)</div>
+      </button>
+      <button class="export-card" id="modalSaveBtn" onclick="saveCurrentFile(); closeExportModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Uložit  <span style="font-size:0.65rem;font-weight:400;color:var(--muted);">Ctrl+S</span></div>
+        <div class="export-card-desc" id="modalSaveDesc">Zapsat do souboru na disku</div>
+      </button>
+      <button class="export-card" id="modalSaveAsBtn" onclick="saveAs(); closeExportModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+            <polyline points="17 21 17 13 7 13 7 21"/>
+            <polyline points="7 3 7 8 15 8"/>
+            <line x1="20" y1="8" x2="24" y2="8" style="display:none"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Uložit jako…</div>
+        <div class="export-card-desc">Nový soubor nebo nové umístění</div>
+      </button>
+    </div>
+
+    <!-- SHARE & EXPORT -->
+    <div class="modal-section-label">Sdílení &amp; Export</div>
+    <div class="export-grid" id="shareOpsGrid">
+      <button class="export-card" onclick="exportCopyText()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Kopírovat jako text</div>
+        <div class="export-card-desc">Časy a názvy bloků do schránky</div>
+      </button>
+      <button class="export-card" onclick="exportCopyTable()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Kopírovat jako tabulku</div>
+        <div class="export-card-desc">HTML tabulka pro Excel / PPT</div>
+      </button>
+      <button class="export-card" onclick="exportDetailedHTML()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Export HTML (detailní)</div>
+        <div class="export-card-desc">Celá agenda včetně obsahu bloků</div>
+      </button>
+      <button class="export-card" onclick="exportCompactHTML()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6"  x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Export HTML (kompaktní)</div>
+        <div class="export-card-desc">Jen časy a názvy — přehled dne</div>
+      </button>
+    </div>
+
+    <!-- BACKUP -->
+    <div class="modal-section-label">Záloha</div>
+    <div class="export-grid" style="grid-template-columns:1fr;margin-bottom:0;">
+      <button class="export-card" onclick="downloadBackup(); closeExportModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Stáhnout zálohu všech agend</div>
+        <div class="export-card-desc">Všechny agendy z aplikace jako jeden .json soubor (záloha)</div>
+      </button>
+    </div>
+
+    <!-- API fallback notice — shown only in Firefox/Safari -->
+    <div class="api-notice" id="apiNotice" style="display:none;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Váš prohlížeč nepodporuje přímou práci se soubory. Soubory budou stahovány do složky Stažené soubory. Pro plnou podporu použijte Chrome nebo Edge.
+    </div>
+
+    <input type="file" id="importFileInput" accept=".agenda,.json" style="display:none;" onchange="importAgendaFallback(this)">
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* ═══════════════════════════════════════════
+   1. FEATURE DETECTION
+═══════════════════════════════════════════ */
+const HAS_FS_API = (
+  'showSaveFilePicker' in window &&
+  'showOpenFilePicker' in window
+);
+
+/* ═══════════════════════════════════════════
+   2. INDEXEDDB LAYER
+═══════════════════════════════════════════ */
+const IDB_NAME  = 'AgendaBuilderDB';
+const IDB_VER   = 1;
+const IDB_STORE = 'agendas';
+let   idb       = null;
+
+function openDB() {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_NAME, IDB_VER);
+    req.onupgradeneeded = e => {
+      e.target.result.createObjectStore(IDB_STORE, { keyPath: 'id' });
+    };
+    req.onsuccess = e => { idb = e.target.result; res(idb); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+function dbGet(id) {
+  return new Promise((res, rej) => {
+    const req = idb.transaction(IDB_STORE).objectStore(IDB_STORE).get(id);
+    req.onsuccess = () => res(req.result || null);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function dbGetAll() {
+  return new Promise((res, rej) => {
+    const req = idb.transaction(IDB_STORE).objectStore(IDB_STORE).getAll();
+    req.onsuccess = () => res(req.result);
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function dbPut(record) {
+  return new Promise((res, rej) => {
+    const req = idb.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).put(record);
+    req.onsuccess = () => res();
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+function dbDelete(id) {
+  return new Promise((res, rej) => {
+    const req = idb.transaction(IDB_STORE, 'readwrite').objectStore(IDB_STORE).delete(id);
+    req.onsuccess = () => res();
+    req.onerror   = () => rej(req.error);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   3. IN-MEMORY INDEX
+   Each entry: { id, title, updated, hasHandle, fileSynced, fileName }
+═══════════════════════════════════════════ */
+let agendaIndex = [];
+
+async function refreshIndex() {
+  const all = await dbGetAll();
+  agendaIndex = all.map(r => ({
+    id:         r.id,
+    title:      r.title || '',
+    updated:    r.updated || 0,
+    hasHandle:  !!r.fileHandle,
+    fileSynced: r.fileSynced !== false,
+    fileName:   r.fileName   || null,
+  })).sort((a, b) => b.updated - a.updated);
+}
+
+/* ═══════════════════════════════════════════
+   4. UTILITIES
+═══════════════════════════════════════════ */
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+function timeToMins(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+function minsToTime(m) {
+  m = ((m % 1440) + 1440) % 1440;
+  return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+}
+function relTime(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60)  return 'Právě teď';
+  const mi = Math.floor(s / 60);
+  if (mi < 60) return `Před ${mi} min`;
+  const h  = Math.floor(mi / 60);
+  if (h < 24)  return `Před ${h} hod`;
+  return `Před ${Math.floor(h / 24)} dny`;
+}
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function stripHtml(s)    { return String(s || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim(); }
+function safeFileName(s) {
+  return String(s || 'Agenda').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,60);
+}
+function todayISO() { return new Date().toISOString().slice(0,10); }
+function buildAgendaFilename(titleHtml, ext) {
+  const title = stripHtml(titleHtml) || 'Agenda';
+  return `Agenda_${safeFileName(title)}_${todayISO()}.${ext}`;
+}
+
+/* ═══════════════════════════════════════════
+   5. STATE
+═══════════════════════════════════════════ */
+let currentAgendaId   = null;
+let isDirty           = false;
+let saveTimer         = null;
+let pendingDeleteId   = null;
+let sortableInstance  = null;
+let statusHideTimer   = null;
+let lastRange         = null;
+let lastFocusedEditor = null;
+
+/* ═══════════════════════════════════════════
+   6. SVG CONSTANTS
+═══════════════════════════════════════════ */
+const DRAG_SVG   = `<svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="1.5" cy="1.5" r="1.5"/><circle cx="6.5" cy="1.5" r="1.5"/><circle cx="1.5" cy="7" r="1.5"/><circle cx="6.5" cy="7" r="1.5"/><circle cx="1.5" cy="12.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/></svg>`;
+const DEL_SVG    = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+const ICON_PLUS  = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const ICON_MINUS = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const ICON_SAVE  = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
+const ICON_CHECK = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+/* ═══════════════════════════════════════════
+   7. AUTO-SAVE TO IDB
+═══════════════════════════════════════════ */
+function markDirty() {
+  if (!currentAgendaId) return;
+  isDirty = true;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(performIDBSave, 800);
+}
+
+async function performIDBSave() {
+  if (!currentAgendaId) return;
+  const agendaId = currentAgendaId; // capture in case user switches mid-save
+  setStatus('saving', 'Ukládám…');
+
+  try {
+    const editorState  = getCurrentEditorState();
+    const existingRec  = await dbGet(agendaId);
+
+    const updatedRecord = {
+      ...(existingRec || {}),
+      ...editorState,
+      id:         agendaId,
+      updated:    Date.now(),
+      fileHandle: existingRec?.fileHandle  ?? null,
+      fileName:   existingRec?.fileName    ?? null,
+      fileSynced: existingRec?.fileHandle  ? false : true,
+    };
+
+    await dbPut(updatedRecord);
+    await refreshIndex();
+
+    if (agendaId === currentAgendaId) {
+      isDirty = false;
+      updateTopbarState();
+      renderSidebar();
+      setStatus('saved', 'Automaticky uloženo');
+    }
+  } catch (err) {
+    console.error('IDB save error:', err);
+    setStatus('saved', 'Chyba při ukládání');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   8. FILE SYSTEM ACCESS API
+═══════════════════════════════════════════ */
+async function verifyPermission(handle, mode = 'readwrite') {
+  if (!handle) return false;
+  try {
+    const opts = { mode };
+    if ((await handle.queryPermission(opts)) === 'granted') return true;
+    if ((await handle.requestPermission(opts)) === 'granted') return true;
+    return false;
+  } catch {
+    return true; // Some browsers don't support queryPermission — assume granted
+  }
+}
+
+async function writeToHandle(record) {
+  if (!record.fileHandle) return false;
+  try {
+    const ok = await verifyPermission(record.fileHandle);
+    if (!ok) { setStatus('saved', 'Přístup k souboru zamítnut'); return false; }
+
+    const exportData = buildExportableState(record);
+    const writable   = await record.fileHandle.createWritable();
+    await writable.write(JSON.stringify(exportData, null, 2));
+    await writable.close();
+
+    record.fileSynced = true;
+    await dbPut(record);
+    await refreshIndex();
+    updateTopbarState();
+    renderSidebar();
+    setStatus('saved', `Uloženo: ${record.fileHandle.name}`);
+    return true;
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Write error:', err);
+      setStatus('saved', 'Chyba při zápisu do souboru');
+    }
+    return false;
+  }
+}
+
+async function saveCurrentFile() {
+  if (!currentAgendaId) return;
+  if (isDirty) await performIDBSave();
+  const record = await dbGet(currentAgendaId);
+  if (!record) return;
+
+  if (record.fileHandle) {
+    await writeToHandle(record);
+  } else {
+    await openSaveAsDialog(record);
+  }
+}
+
+async function saveAs() {
+  if (!currentAgendaId) return;
+  if (isDirty) await performIDBSave();
+  const record = await dbGet(currentAgendaId);
+  if (!record) return;
+  await openSaveAsDialog(record);
+}
+
+async function openSaveAsDialog(record) {
+  const filename = buildAgendaFilename(record.title, 'agenda');
+
+  if (HAS_FS_API) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{ description: 'Agenda File', accept: { 'application/x-agenda': ['.agenda'] } }],
+      });
+      record.fileHandle = handle;
+      record.fileName   = handle.name;
+      await writeToHandle(record);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('SaveAs error:', err);
+        setStatus('saved', 'Chyba při ukládání');
+      }
+    }
+  } else {
+    // Fallback: trigger download
+    const exportData = buildExportableState(record);
+    downloadFile(JSON.stringify(exportData, null, 2), filename, 'application/json');
+    setStatus('saved', `Staženo: ${filename}`);
+  }
+}
+
+async function openFromFile() {
+  closeExportModal();
+
+  if (!HAS_FS_API) {
+    document.getElementById('importFileInput').click();
+    return;
+  }
+
+  try {
+    const [handle] = await window.showOpenFilePicker({
+      types: [{ description: 'Agenda File', accept: { 'application/x-agenda': ['.agenda'], 'application/json': ['.json'] } }],
+    });
+    const file   = await handle.getFile();
+    const text   = await file.text();
+    const parsed = JSON.parse(text);
+
+    const items  = Array.isArray(parsed) ? parsed : [parsed];
+    let lastId   = null;
+
+    for (const data of items) {
+      if (isDirty && currentAgendaId) await performIDBSave();
+      const newId  = genId();
+      const record = {
+        ...normalizeAgendaData(data),
+        id:         newId,
+        updated:    Date.now(),
+        // Only link handle for single-file opens (not bulk backup)
+        fileHandle: items.length === 1 ? handle : null,
+        fileName:   items.length === 1 ? handle.name : null,
+        fileSynced: true,
+      };
+      await dbPut(record);
+      lastId = newId;
+    }
+
+    await refreshIndex();
+    if (lastId) await switchAgenda(lastId);
+    setStatus('saved', items.length > 1
+      ? `Otevřeno ${items.length} agend`
+      : `Otevřeno: ${handle.name}`
+    );
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.error('Open error:', err);
+      setStatus('saved', 'Chyba při otevírání souboru');
+    }
+  }
+}
+
+/* Fallback import for Firefox/Safari */
+function importAgendaFallback(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async evt => {
+    try {
+      const parsed = JSON.parse(evt.target.result);
+      const items  = Array.isArray(parsed) ? parsed : [parsed];
+      if (items.length === 0) throw new Error('empty');
+
+      let lastId = null;
+      for (const data of items) {
+        const newId  = genId();
+        const record = {
+          ...normalizeAgendaData(data),
+          id:         newId,
+          updated:    Date.now(),
+          fileHandle: null,
+          fileName:   null,
+          fileSynced: true,
+        };
+        await dbPut(record);
+        lastId = newId;
+      }
+      await refreshIndex();
+      if (lastId) await switchAgenda(lastId);
+      setStatus('saved', items.length > 1 ? `Importováno ${items.length} agend` : 'Agenda importována');
+      closeExportModal();
+    } catch {
+      setStatus('saved', 'Chyba: neplatný .json soubor');
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+/* Strip non-serialisable fields before writing to JSON file */
+function buildExportableState(record) {
+  const { fileHandle, fileSynced, fileName, ...data } = record;
+  return data;
+}
+
+/* ═══════════════════════════════════════════
+   9. STATUS PILL
+═══════════════════════════════════════════ */
+function setStatus(state, text) {
+  const pill   = document.getElementById('statusPill');
+  const textEl = document.getElementById('statusText');
+  pill.classList.remove('saving');
+  clearTimeout(statusHideTimer);
+  textEl.textContent = text;
+  pill.classList.add('visible');
+  if (state === 'saving') {
+    pill.classList.add('saving');
+  } else {
+    statusHideTimer = setTimeout(() => pill.classList.remove('visible'), 2800);
+  }
+}
+
+/* ═══════════════════════════════════════════
+   10. TOPBAR STATE
+═══════════════════════════════════════════ */
+function updateTopbarState() {
+  const saveBtn    = document.getElementById('topbarSaveBtn');
+  const fileChip   = document.getElementById('topbarFileChip');
+  const fileNameEl = document.getElementById('topbarFileName');
+  if (!saveBtn) return;
+
+  const entry = agendaIndex.find(e => e.id === currentAgendaId);
+
+  if (!entry || !currentAgendaId) {
+    fileChip.classList.remove('visible');
+    saveBtn.className   = 'btn btn-sm btn-ghost';
+    saveBtn.innerHTML   = ICON_SAVE + ' Uložit jako…';
+    return;
+  }
+
+  if (!entry.hasHandle) {
+    fileChip.classList.remove('visible');
+    saveBtn.className = 'btn btn-sm';
+    saveBtn.innerHTML = ICON_SAVE + ' Uložit jako…';
+  } else if (!entry.fileSynced) {
+    fileChip.className   = 'file-chip visible unsaved';
+    fileNameEl.textContent = entry.fileName || 'soubor.json';
+    saveBtn.className    = 'btn btn-sm btn-save-dirty';
+    saveBtn.innerHTML    = ICON_SAVE + ' Uložit';
+  } else {
+    fileChip.className   = 'file-chip visible synced';
+    fileNameEl.textContent = entry.fileName || 'soubor.json';
+    saveBtn.className    = 'btn btn-sm btn-save-clean';
+    saveBtn.innerHTML    = ICON_CHECK + ' Uloženo';
+  }
+}
+
+/* ═══════════════════════════════════════════
+   11. SIDEBAR
+═══════════════════════════════════════════ */
+function renderSidebar() {
+  const list = document.getElementById('sidebarList');
+
+  if (agendaIndex.length === 0) {
+    list.innerHTML = '<div style="padding:20px 16px;color:rgba(255,255,255,0.25);font-size:0.8rem;text-align:center;">Žádné agendy</div>';
+    return;
+  }
+
+  const delIcon = `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
+  list.innerHTML = agendaIndex.map(e => {
+    const dotClass = !e.hasHandle ? 'local' : (e.fileSynced ? 'synced' : 'unsaved');
+    const dotTitle = !e.hasHandle ? 'Pouze lokálně' : (e.fileSynced ? 'Synchronizováno se souborem' : 'Neuložené změny – stiskni Ctrl+S');
+
+    return `
+      <div class="agenda-item ${e.id === currentAgendaId ? 'active' : ''}" onclick="switchAgenda('${e.id}')">
+        <div class="sync-dot ${dotClass}" title="${dotTitle}"></div>
+        <div class="agenda-item-info">
+          <div class="agenda-item-title">${escHtml(stripHtml(e.title) || 'Bez názvu')}</div>
+          <div class="agenda-item-meta">${relTime(e.updated)}</div>
+        </div>
+        <button class="agenda-item-del" onclick="promptDeleteAgenda(event,'${e.id}','${escHtml(stripHtml(e.title) || 'Bez názvu')}')" title="Smazat">${delIcon}</button>
+      </div>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════
+   12. EDITOR STATE (READ FROM DOM)
+═══════════════════════════════════════════ */
+function getCurrentEditorState() {
+  const blocks = [];
+  document.querySelectorAll('#flow-container .flow-item').forEach(item => {
+    const isBreak = item.classList.contains('is-break');
+    const b = {
+      id:        item.dataset.blockId,
+      type:      isBreak ? 'break' : 'block',
+      startTime: item.querySelector('.start-time').value,
+      endTime:   item.querySelector('.end-time').value,
+      duration:  parseInt(item.querySelector('.duration-input')?.value) || 0,
+      title:     item.querySelector('.block-title').innerHTML,
+    };
+    if (!isBreak) {
+      const editor   = item.querySelector('.card-editor');
+      b.contentHtml  = editor ? editor.innerHTML : '';
+    }
+    blocks.push(b);
+  });
+
+  const summaryBox = document.getElementById('summaryBox');
+  return {
+    title:              document.getElementById('agenda-title').innerHTML,
+    subtitle:           document.getElementById('agenda-subtitle').innerHTML,
+    summaryVisible:     summaryBox ? summaryBox.style.display !== 'none' : false,
+    summaryInputTitle:  document.getElementById('summary-input-title').innerHTML,
+    summaryInput:       document.getElementById('summary-input').innerHTML,
+    summaryOutputTitle: document.getElementById('summary-output-title').innerHTML,
+    summaryOutput:      document.getElementById('summary-output').innerHTML,
+    blocks,
+    isCompact: document.body.classList.contains('compact-mode'),
+  };
+}
+
+function getPlainTitle() {
+  return stripHtml(document.getElementById('agenda-title')?.innerHTML) || 'Bez názvu';
+}
+
+/* ═══════════════════════════════════════════
+   13. DATA NORMALISATION (migration-safe)
+═══════════════════════════════════════════ */
+function normalizeAgendaData(data) {
+  let blocks = Array.isArray(data.blocks) ? data.blocks : [];
+
+  blocks = blocks.map(b => {
+    const dur = b.duration != null
+      ? b.duration
+      : Math.max(0, timeToMins(b.endTime) - timeToMins(b.startTime));
+    if (b.type !== 'block') return { ...b, duration: dur };
+    if (typeof b.contentHtml === 'string') return { ...b, duration: dur };
+
+    // Migrate from content[] array format
+    if (Array.isArray(b.content)) {
+      const contentHtml = b.content.map(cb => {
+        const h = cb.html || '';
+        switch (cb.type) {
+          case 'heading': return `<h3>${h}</h3>`;
+          case 'list':    return `<ul>${h || '<li></li>'}</ul>`;
+          case 'callout': return `<blockquote class="cb-callout">${h}</blockquote>`;
+          default:        return `<p>${h || ''}</p>`;
+        }
+      }).join('');
+      return { id: b.id, type: 'block', startTime: b.startTime, endTime: b.endTime, duration: dur, title: b.title, contentHtml };
+    }
+
+    // Migrate v2 description/tools/prep fields
+    const parts = [];
+    if (b.description) parts.push(`<p>${b.description}</p>`);
+    if (b.tools)       parts.push(`<p>${b.tools}</p>`);
+    if (b.prep)        parts.push(`<blockquote class="cb-callout">${b.prep}</blockquote>`);
+    return { id: b.id, type: 'block', startTime: b.startTime, endTime: b.endTime, duration: dur, title: b.title, contentHtml: parts.join('') };
+  });
+
+  return {
+    title:              data.title              || '',
+    subtitle:           data.subtitle           || '',
+    summaryVisible:     data.summaryVisible !== undefined ? !!data.summaryVisible : true,
+    summaryInputTitle:  data.summaryInputTitle  || 'Vstup: Co dostanou účastníci',
+    summaryInput:       data.summaryInput       || '<li>Vstup 1</li><li>Vstup 2</li>',
+    summaryOutputTitle: data.summaryOutputTitle || 'Výstup: S čím odcházíme',
+    summaryOutput:      data.summaryOutput      || '<li>Výstup 1</li><li>Výstup 2</li>',
+    blocks,
+    isCompact:          !!data.isCompact,
+  };
+}
+
+function getDefaultAgendaState() {
+  return normalizeAgendaData({ summaryVisible: false });
+}
+
+/* ═══════════════════════════════════════════
+   14. AGENDA CRUD
+═══════════════════════════════════════════ */
+async function createNewAgenda() {
+  if (isDirty && currentAgendaId) await performIDBSave();
+  const id     = genId();
+  const record = {
+    ...getDefaultAgendaState(),
+    id,
+    updated:    Date.now(),
+    fileHandle: null,
+    fileName:   null,
+    fileSynced: true,
+  };
+  await dbPut(record);
+  await refreshIndex();
+  await switchAgenda(id);
+}
+
+async function switchAgenda(id) {
+  if (id === currentAgendaId) return;
+  if (isDirty && currentAgendaId) await performIDBSave();
+
+  const record = await dbGet(id);
+  if (!record) return;
+
+  currentAgendaId = id;
+  loadStateIntoEditor(record);
+  await refreshIndex();
+  renderSidebar();
+  updateTopbarState();
+}
+
+function loadStateIntoEditor(record) {
+  document.getElementById('emptyState').style.display  = 'none';
+  document.getElementById('editorWrap').style.display  = 'block';
+
+  document.getElementById('agenda-title').innerHTML          = record.title             || '';
+  document.getElementById('agenda-subtitle').innerHTML       = record.subtitle          || '';
+  document.getElementById('summary-input-title').innerHTML   = record.summaryInputTitle || '';
+  document.getElementById('summary-input').innerHTML         = record.summaryInput      || '';
+  document.getElementById('summary-output-title').innerHTML  = record.summaryOutputTitle || '';
+  document.getElementById('summary-output').innerHTML        = record.summaryOutput     || '';
+
+  const summaryVisible = record.summaryVisible !== undefined ? !!record.summaryVisible : true;
+  updateSummaryVisibility(summaryVisible);
+
+  const isCompact = !!record.isCompact;
+  document.body.classList.toggle('compact-mode', isCompact);
+  updateCompactBtn(isCompact);
+
+  const container = document.getElementById('flow-container');
+  container.innerHTML = '';
+  (record.blocks || []).forEach(b => container.appendChild(buildBlockEl(b)));
+
+  updateBadges();
+  setupSortable();
+  document.getElementById('topbarTitle') && (document.getElementById('topbarTitle').textContent = stripHtml(record.title || ''));
+  isDirty = false;
+}
+
+/* ═══════════════════════════════════════════
+   15. DELETE AGENDA
+═══════════════════════════════════════════ */
+function promptDeleteAgenda(e, id, title) {
+  e.stopPropagation();
+  pendingDeleteId = id;
+  document.getElementById('deleteModalText').textContent = `"${title}" bude trvale odstraněna.`;
+  document.getElementById('deleteModal').classList.remove('hidden');
+}
+function closeDeleteModal() {
+  document.getElementById('deleteModal').classList.add('hidden');
+  pendingDeleteId = null;
+}
+async function confirmDeleteAgenda() {
+  if (!pendingDeleteId) return;
+  await dbDelete(pendingDeleteId);
+  await refreshIndex();
+
+  if (pendingDeleteId === currentAgendaId) {
+    currentAgendaId = null;
+    isDirty         = false;
+    if (agendaIndex.length > 0) {
+      await switchAgenda(agendaIndex[0].id);
+    } else {
+      document.getElementById('editorWrap').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'flex';
+      updateTopbarState();
+    }
+  }
+  closeDeleteModal();
+  renderSidebar();
+}
+
+/* ═══════════════════════════════════════════
+   16. SUMMARY BOX
+═══════════════════════════════════════════ */
+function toggleSummaryBox() {
+  const box = document.getElementById('summaryBox');
+  updateSummaryVisibility(box.style.display === 'none');
+  markDirty();
+}
+function updateSummaryVisibility(visible) {
+  const box = document.getElementById('summaryBox');
+  const btn = document.getElementById('toggleSummaryBtn');
+  if (!box || !btn) return;
+  box.style.display = visible ? 'grid' : 'none';
+  btn.innerHTML = visible
+    ? `${ICON_MINUS} Skrýt kontext (Vstup/Výstup)`
+    : `${ICON_PLUS} Přidat kontext (Vstup/Výstup)`;
+}
+
+/* ═══════════════════════════════════════════
+   17. BUILD BLOCK ELEMENT
+═══════════════════════════════════════════ */
+function buildBlockEl(block) {
+  const item = document.createElement('div');
+  item.className    = 'flow-item' + (block.type === 'break' ? ' is-break' : '');
+  item.dataset.blockId = block.id || genId();
+
+  const st  = block.startTime || '09:00';
+  const et  = block.endTime   || '09:30';
+  const dur = block.duration  != null ? block.duration : Math.max(0, timeToMins(et) - timeToMins(st));
+  const titleHtml        = block.title || (block.type === 'break' ? 'Pauza' : 'Nový blok');
+  const titlePlaceholder = block.type === 'break' ? 'Pauza' : 'Název bloku';
+
+  item.innerHTML = `
+    <div class="drag-handle" title="Přetáhni pro přeřazení">${DRAG_SVG}</div>
+    <div class="card${block.type === 'break' ? ' break-card' : ''}">
+      <div class="card-controls">
+        <button class="ctrl-btn del" title="Smazat blok">${DEL_SVG}</button>
+      </div>
+      <div class="card-header">
+        <div class="time-badge">
+          <input type="time" class="time-input start-time" value="${st}">
+          <span class="time-sep">–</span>
+          <input type="time" class="time-input end-time"   value="${et}">
+        </div>
+        <div class="duration-wrap">
+          <input type="number" class="duration-input" min="0" max="720" value="${dur}">
+          <span class="duration-unit">min</span>
+        </div>
+        <div class="block-title" contenteditable="true" data-placeholder="${titlePlaceholder}">${titleHtml}</div>
+      </div>
+      ${block.type !== 'break' ? '<div class="card-content"></div>' : ''}
+    </div>`;
+
+  item.querySelector('.ctrl-btn.del').addEventListener('click', () => deleteBlock(item));
+
+  const startInput = item.querySelector('.start-time');
+  const endInput   = item.querySelector('.end-time');
+  const durInput   = item.querySelector('.duration-input');
+
+  startInput.addEventListener('change', () => { onTimeChange(item, 'start');    markDirty(); });
+  endInput.addEventListener('change',   () => { onTimeChange(item, 'end');      markDirty(); });
+  durInput.addEventListener('change',   () => { onTimeChange(item, 'duration'); markDirty(); });
+  durInput.addEventListener('input',    () => { onTimeChange(item, 'duration'); markDirty(); });
+  item.querySelector('.block-title').addEventListener('input', markDirty);
+
+  if (block.type !== 'break') {
+    const cardContent = item.querySelector('.card-content');
+    const editor = document.createElement('div');
+    editor.className       = 'card-editor';
+    editor.contentEditable = 'true';
+    editor.setAttribute('data-placeholder', 'Přidej popis aktivity, přípravy nebo poznámky…');
+
+    const rawHtml = block.contentHtml || '';
+    editor.innerHTML = rawHtml;
+    if (editor.textContent.trim() === '' && !editor.querySelector('blockquote,h3,ul,ol')) {
+      editor.innerHTML = '';
+    }
+
+    editor.addEventListener('input', markDirty);
+    editor.addEventListener('blur', () => {
+      if (editor.textContent.trim() === '' && !editor.querySelector('blockquote,h3,ul,ol,img')) {
+        editor.innerHTML = '';
+      }
+    });
+    editor.addEventListener('keydown', e => handleEditorKeydown(e, editor));
+    editor.addEventListener('focus',   () => { lastFocusedEditor = editor; });
+
+    const toolbar = buildCardToolbar(editor);
+    cardContent.appendChild(toolbar);
+    cardContent.appendChild(editor);
+  }
+
+  return item;
+}
+
+/* ═══════════════════════════════════════════
+   18. CARD INLINE TOOLBAR
+═══════════════════════════════════════════ */
+function buildCardToolbar(editor) {
+  const toolbar = document.createElement('div');
+  toolbar.className = 'card-toolbar';
+
+  const SVG_HEADING   = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>`;
+  const SVG_PARAGRAPH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h6"/></svg>`;
+  const SVG_LIST      = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="6" r="1.8"/><rect x="9" y="4.5" width="11" height="3" rx="1.5"/><circle cx="4" cy="12" r="1.8"/><rect x="9" y="10.5" width="11" height="3" rx="1.5"/><circle cx="4" cy="18" r="1.8"/><rect x="9" y="16.5" width="11" height="3" rx="1.5"/></svg>`;
+  const SVG_CALLOUT   = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  const SVG_ACTIVITY  = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+
+  const items = [
+    { title: 'Nadpis (H3)',      svg: SVG_HEADING,   action: () => insertHeadingInEditor(editor) },
+    { title: 'Odstavec',         svg: SVG_PARAGRAPH, action: () => insertParagraphInEditor(editor) },
+    { sep: true },
+    { title: 'Tučné (Ctrl+B)',   html: '<b style="font-size:0.82rem">B</b>', action: () => { editor.focus(); document.execCommand('bold');   markDirty(); } },
+    { title: 'Kurzíva (Ctrl+I)', html: '<i style="font-size:0.82rem">I</i>', action: () => { editor.focus(); document.execCommand('italic'); markDirty(); } },
+    { sep: true },
+    { title: 'Odrážky',                    svg: SVG_LIST,     action: () => { editor.focus(); document.execCommand('insertUnorderedList'); markDirty(); } },
+    { title: 'Callout (zelený blok)',       svg: SVG_CALLOUT,  action: () => insertCustomBlock(editor, 'cb-callout') },
+    { title: 'Aktivita / Cvičení (šedý blok)', svg: SVG_ACTIVITY, action: () => insertCustomBlock(editor, 'cb-activity') },
+  ];
+
+  items.forEach(item => {
+    if (item.sep) {
+      const sep = document.createElement('div');
+      sep.className = 'ctb-sep';
+      toolbar.appendChild(sep);
+      return;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'ctb-btn';
+    btn.title     = item.title;
+    btn.innerHTML = item.svg || item.html || '';
+    btn.addEventListener('mousedown', e => { e.preventDefault(); item.action(); });
+    toolbar.appendChild(btn);
+  });
+  return toolbar;
+}
+
+/* ═══════════════════════════════════════════
+   19. CUSTOM BLOCK HELPERS
+═══════════════════════════════════════════ */
+
+/* Returns the nearest .cb-callout/.cb-activity ancestor within editor, or null */
+function getCustomBlockAncestor(node, editor) {
+  let cur = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  while (cur && cur !== editor) {
+    if (cur.classList && (cur.classList.contains('cb-callout') || cur.classList.contains('cb-activity'))) {
+      return cur;
+    }
+    cur = cur.parentNode;
+  }
+  return null;
+}
+
+/* Returns the direct child of `parent` that contains `node` */
+function getDirectChild(parent, node) {
+  let cur = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  while (cur && cur.parentNode !== parent) cur = cur.parentNode;
+  return cur || null;
+}
+
+/* ── Cursor helpers ───────────────────────────────────────────── */
+function _setCursorAtEnd(el, sel) {
+  try {
+    const nr = document.createRange();
+    nr.selectNodeContents(el);
+    nr.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(nr);
+  } catch (_) {}
+}
+function _setCursorAtStart(el, sel) {
+  try {
+    const nr = document.createRange();
+    nr.setStart(el, 0);
+    nr.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(nr);
+  } catch (_) {}
+}
+
+/*
+ * getEditorTopEl — returns the direct child of `editor` that contains `node`.
+ * Never returns editor itself; returns null if node is not inside editor.
+ */
+function getEditorTopEl(node, editor) {
+  let cur = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  if (cur === editor) return null;
+  while (cur && cur.parentNode !== editor) {
+    if (!cur.parentNode) return null;
+    cur = cur.parentNode;
+  }
+  return cur === editor ? null : cur;
+}
+
+/*
+ * insertHeadingInEditor — robust H3 toggle that NEVER swallows adjacent ULs.
+ *
+ * NOTE: does NOT call editor.focus() — the selection must already be valid
+ * at the call site (inline toolbar keeps editor focused via e.preventDefault();
+ * floating toolbar restores lastRange in applyFmt before calling this).
+ *
+ * Outside custom blocks:
+ *   bare text node  →  wraps the text node in H3 in-place
+ *   P / DIV / other →  converts that exact element to H3
+ *   H3              →  toggles back to P
+ *   UL / OL         →  extracts the cursor's LI as a stand-alone H3
+ *
+ * Inside custom blocks: operates on the line element only.
+ */
+function insertHeadingInEditor(editor) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  const sc    = range.startContainer;             // original startContainer (kept for text-node check)
+  let   node  = sc.nodeType === Node.TEXT_NODE ? sc.parentNode : sc;
+
+  /* Guard: selection must be inside this editor */
+  if (!editor.contains(sc) && sc !== editor) return;
+
+  const customBlock = getCustomBlockAncestor(node, editor);
+
+  if (customBlock) {
+    /* ── Inside green callout or grey activity ── */
+    const lineEl = getDirectChild(customBlock, node);
+    if (!lineEl || lineEl === customBlock) {
+      const h3 = document.createElement('h3');
+      h3.innerHTML = '<br>';
+      customBlock.insertBefore(h3, customBlock.firstChild);
+      _setCursorAtStart(h3, sel);
+    } else if (lineEl.nodeName === 'H3') {
+      const p = document.createElement('p');
+      p.innerHTML = lineEl.innerHTML || '<br>';
+      lineEl.replaceWith(p);
+      _setCursorAtEnd(p, sel);
+    } else {
+      const h3 = document.createElement('h3');
+      h3.innerHTML = lineEl.innerHTML || '<br>';
+      lineEl.replaceWith(h3);
+      _setCursorAtEnd(h3, sel);
+    }
+
+  } else {
+    /* ── Outside custom block ── */
+    const topEl = getEditorTopEl(node, editor);
+
+    if (!topEl) {
+      /*
+       * topEl is null when the start-container is a text node OR element
+       * that sits DIRECTLY inside the editor (no block wrapper).
+       * Wrap just that single text node in an H3 in-place instead of
+       * appending a new empty one.
+       */
+      if (sc.nodeType === Node.TEXT_NODE && sc.parentNode === editor) {
+        const h3 = document.createElement('h3');
+        editor.insertBefore(h3, sc);
+        h3.appendChild(sc);
+        _setCursorAtEnd(h3, sel);
+      } else {
+        const h3 = document.createElement('h3');
+        h3.innerHTML = '<br>';
+        editor.appendChild(h3);
+        _setCursorAtStart(h3, sel);
+      }
+
+    } else if (topEl.nodeName === 'H3') {
+      /* Toggle H3 → P */
+      const p = document.createElement('p');
+      p.innerHTML = topEl.innerHTML || '<br>';
+      topEl.replaceWith(p);
+      _setCursorAtEnd(p, sel);
+
+    } else if (topEl.nodeName === 'UL' || topEl.nodeName === 'OL') {
+      /* Cursor is inside a list — extract the specific LI as an H3 */
+      let liEl = node;
+      while (liEl && liEl !== topEl && liEl.nodeName !== 'LI') liEl = liEl.parentNode;
+
+      if (liEl && liEl.nodeName === 'LI') {
+        const h3 = document.createElement('h3');
+        h3.innerHTML = liEl.innerHTML || '<br>';
+
+        const allLIs    = Array.from(topEl.children);
+        const liIndex   = allLIs.indexOf(liEl);
+        const beforeLIs = allLIs.slice(0, liIndex);
+        const afterLIs  = allLIs.slice(liIndex + 1);
+
+        /* Build replacement fragment: [ulBefore?] [h3] [ulAfter?] */
+        const frag = document.createDocumentFragment();
+        if (beforeLIs.length > 0) {
+          const ulBefore = document.createElement(topEl.nodeName);
+          beforeLIs.forEach(li => ulBefore.appendChild(li.cloneNode(true)));
+          frag.appendChild(ulBefore);
+        }
+        frag.appendChild(h3);
+        if (afterLIs.length > 0) {
+          const ulAfter = document.createElement(topEl.nodeName);
+          afterLIs.forEach(li => ulAfter.appendChild(li.cloneNode(true)));
+          frag.appendChild(ulAfter);
+        }
+        topEl.replaceWith(frag);
+        _setCursorAtEnd(h3, sel);
+      } else {
+        /* Fallback: insert H3 before the list */
+        const h3 = document.createElement('h3');
+        h3.innerHTML = '<br>';
+        topEl.before(h3);
+        _setCursorAtStart(h3, sel);
+      }
+
+    } else {
+      /* P, DIV, or anything else → convert to H3 */
+      const h3 = document.createElement('h3');
+      h3.innerHTML = topEl.innerHTML || '<br>';
+      topEl.replaceWith(h3);
+      _setCursorAtEnd(h3, sel);
+    }
+  }
+  markDirty();
+}
+
+/*
+ * insertParagraphInEditor — robust "convert to normal text".
+ *
+ * NOTE: does NOT call editor.focus() — see comment on insertHeadingInEditor.
+ *
+ * Outside custom blocks:
+ *   bare text node  →  no-op (already plain text)
+ *   H3              →  P
+ *   UL / OL         →  one <p> per list item (flattens the list)
+ *   P               →  no-op (already paragraph)
+ *
+ * Inside custom blocks: operates on the line element only.
+ */
+function insertParagraphInEditor(editor) {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+
+  const range = sel.getRangeAt(0);
+  const sc    = range.startContainer;
+  let   node  = sc.nodeType === Node.TEXT_NODE ? sc.parentNode : sc;
+
+  /* Guard: selection must be inside this editor */
+  if (!editor.contains(sc) && sc !== editor) return;
+
+  const customBlock = getCustomBlockAncestor(node, editor);
+
+  if (customBlock) {
+    /* ── Inside custom block ── */
+    const lineEl = getDirectChild(customBlock, node);
+    if (lineEl && lineEl !== customBlock && lineEl.nodeName !== 'P') {
+      const p = document.createElement('p');
+      p.innerHTML = lineEl.innerHTML || '<br>';
+      lineEl.replaceWith(p);
+      _setCursorAtEnd(p, sel);
+    }
+
+  } else {
+    /* ── Outside custom block ── */
+    const topEl = getEditorTopEl(node, editor);
+
+    if (!topEl) {
+      /* Text is directly in editor — already "plain text", nothing to change */
+      return;
+
+    } else if (topEl.nodeName === 'P') {
+      /* Already a paragraph — reposition cursor cleanly */
+      _setCursorAtEnd(topEl, sel);
+
+    } else if (topEl.nodeName === 'H3') {
+      /* H3 → P */
+      const p = document.createElement('p');
+      p.innerHTML = topEl.innerHTML || '<br>';
+      topEl.replaceWith(p);
+      _setCursorAtEnd(p, sel);
+
+    } else if (topEl.nodeName === 'UL' || topEl.nodeName === 'OL') {
+      /* Flatten list: each LI becomes its own <p> */
+      const allLIs = Array.from(topEl.children);
+      const frag   = document.createDocumentFragment();
+      let lastP    = null;
+      allLIs.forEach(li => {
+        const p = document.createElement('p');
+        p.innerHTML = li.innerHTML || '<br>';
+        frag.appendChild(p);
+        lastP = p;
+      });
+      topEl.replaceWith(frag);
+      if (lastP) _setCursorAtEnd(lastP, sel);
+
+    } else {
+      /* Any other block → wrap content in P */
+      const p = document.createElement('p');
+      p.innerHTML = topEl.innerHTML || '<br>';
+      topEl.replaceWith(p);
+      _setCursorAtEnd(p, sel);
+    }
+  }
+  markDirty();
+}
+
+/* Robust custom block insertion using <div> (avoids execCommand DOM corruption) */
+function insertCustomBlock(editor, blockClass) {
+  editor.focus();
+  const sel = window.getSelection();
+
+  const block = document.createElement('div');
+  block.className = blockClass;
+  const innerP = document.createElement('p');
+  innerP.innerHTML = '<br>';
+  block.appendChild(innerP);
+
+  const followP = document.createElement('p');
+  followP.innerHTML = '<br>';
+
+  if (!sel || !sel.rangeCount) {
+    editor.appendChild(block);
+    editor.appendChild(followP);
+  } else {
+    const range = sel.getRangeAt(0);
+    let node = range.startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+
+    const existingBlock = getCustomBlockAncestor(node, editor);
+    if (existingBlock) {
+      existingBlock.after(block);
+      block.after(followP);
+    } else {
+      let topEl = node;
+      while (topEl.parentNode !== editor && topEl !== editor) topEl = topEl.parentNode;
+      if (topEl !== editor) {
+        topEl.after(block);
+        block.after(followP);
+      } else {
+        editor.appendChild(block);
+        editor.appendChild(followP);
+      }
+    }
+  }
+
+  const nr = document.createRange();
+  nr.setStart(innerP, 0); nr.collapse(true);
+  if (sel) { sel.removeAllRanges(); sel.addRange(nr); }
+  markDirty();
+}
+
+/* ═══════════════════════════════════════════
+   20. EDITOR KEYDOWN
+═══════════════════════════════════════════ */
+function handleEditorKeydown(e, editor) {
+  if (e.key !== 'Enter') return;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount || !sel.isCollapsed) return;
+  const range = sel.getRangeAt(0);
+  let node = range.startContainer;
+  if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
+
+  const customBlock = getCustomBlockAncestor(node, editor);
+  if (!customBlock) return;
+
+  // Find the direct child line element of the custom block
+  const lineEl = getDirectChild(customBlock, node);
+
+  // If the current line is empty, pressing Enter escapes the block
+  const lineIsEmpty = !lineEl || lineEl === customBlock
+    ? customBlock.textContent.trim() === ''
+    : lineEl.textContent.trim() === '' && !lineEl.querySelector('br + br');
+
+  if (lineIsEmpty) {
+    e.preventDefault();
+    if (lineEl && lineEl !== customBlock) lineEl.remove();
+    const p = document.createElement('p');
+    p.innerHTML = '<br>';
+    customBlock.after(p);
+    const nr = document.createRange();
+    nr.setStart(p, 0); nr.collapse(true);
+    sel.removeAllRanges(); sel.addRange(nr);
+    markDirty();
+    return;
+  }
+
+  // For old-style <blockquote> blocks (backward compat), manage <br> manually
+  // For new <div>-based blocks, let the browser create elements naturally
+  if (customBlock.nodeName === 'BLOCKQUOTE') {
+    e.preventDefault();
+    const br = document.createElement('br');
+    range.deleteContents(); range.insertNode(br);
+    const br2 = document.createElement('br');
+    br.after(br2);
+    const nr = document.createRange();
+    nr.setStartBefore(br2); nr.collapse(true);
+    sel.removeAllRanges(); sel.addRange(nr);
+    markDirty();
+  }
+  // For <div>-based blocks, allow browser default (creates new <p> inside the div)
+}
+
+/* ═══════════════════════════════════════════
+   21. TIME / DURATION LOGIC
+═══════════════════════════════════════════ */
+function onTimeChange(item, field) {
+  const startInput = item.querySelector('.start-time');
+  const endInput   = item.querySelector('.end-time');
+  const durInput   = item.querySelector('.duration-input');
+
+  if (field === 'start') {
+    const s = timeToMins(startInput.value), d = parseInt(durInput.value) || 0;
+    endInput.value = minsToTime(s + d);
+  } else if (field === 'end') {
+    const s = timeToMins(startInput.value), e = timeToMins(endInput.value);
+    durInput.value = Math.max(0, e - s);
+  } else {
+    const s = timeToMins(startInput.value), d = parseInt(durInput.value) || 0;
+    endInput.value = minsToTime(s + d);
+  }
+
+  const items = Array.from(document.querySelectorAll('#flow-container .flow-item'));
+  const idx   = items.indexOf(item);
+  for (let i = idx + 1; i < items.length; i++) {
+    const prev    = items[i - 1];
+    const curr    = items[i];
+    const prevEnd = timeToMins(prev.querySelector('.end-time').value);
+    const cDur    = parseInt(curr.querySelector('.duration-input')?.value) || 0;
+    curr.querySelector('.start-time').value = minsToTime(prevEnd);
+    curr.querySelector('.end-time').value   = minsToTime(prevEnd + cDur);
+  }
+  updateBadges();
+}
+
+function recalculateAll() {
+  const items = Array.from(document.querySelectorAll('#flow-container .flow-item'));
+  if (items.length <= 1) { updateBadges(); return; }
+  for (let i = 1; i < items.length; i++) {
+    const prev    = items[i - 1];
+    const curr    = items[i];
+    const prevEnd = timeToMins(prev.querySelector('.end-time').value);
+    const cDur    = parseInt(curr.querySelector('.duration-input')?.value) || 0;
+    curr.querySelector('.start-time').value = minsToTime(prevEnd);
+    curr.querySelector('.end-time').value   = minsToTime(prevEnd + cDur);
+  }
+  updateBadges();
+}
+
+function updateBadges() {
+  document.querySelectorAll('#flow-container .flow-item').forEach(item => {
+    const s    = timeToMins(item.querySelector('.start-time').value);
+    const e    = timeToMins(item.querySelector('.end-time').value);
+    const isErr = (e - s) < 0;
+    item.querySelector('.time-badge')?.classList.toggle('error', isErr);
+    item.querySelector('.duration-wrap')?.classList.toggle('error', isErr);
+  });
+}
+
+/* ═══════════════════════════════════════════
+   22. ADD / DELETE BLOCKS
+═══════════════════════════════════════════ */
+function addBlock(isBreak) {
+  const container = document.getElementById('flow-container');
+  const items     = container.querySelectorAll('.flow-item');
+  let lastEnd = '09:00';
+  if (items.length > 0) lastEnd = items[items.length - 1].querySelector('.end-time').value;
+
+  const dur   = isBreak ? 15 : 30;
+  const block = {
+    id:          genId(),
+    type:        isBreak ? 'break' : 'block',
+    startTime:   lastEnd,
+    endTime:     minsToTime(timeToMins(lastEnd) + dur),
+    duration:    dur,
+    title:       isBreak ? 'Pauza' : 'Nový blok programu',
+    contentHtml: '',
+  };
+
+  const el = buildBlockEl(block);
+  el.classList.add('block-enter');
+  container.appendChild(el);
+  el.addEventListener('animationend', () => el.classList.remove('block-enter'), { once: true });
+  updateBadges();
+  markDirty();
+
+  setTimeout(() => {
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const titleEl = el.querySelector('.block-title');
+    if (titleEl) { titleEl.focus(); selectAll(titleEl); }
+  }, 50);
+}
+
+function deleteBlock(item) {
+  item.classList.add('block-exit');
+  item.addEventListener('animationend', () => { item.remove(); recalculateAll(); markDirty(); }, { once: true });
+}
+
+function selectAll(el) {
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+/* ═══════════════════════════════════════════
+   23. COMPACT MODE
+═══════════════════════════════════════════ */
+function toggleCompactMode() {
+  document.body.classList.toggle('compact-mode');
+  updateCompactBtn(document.body.classList.contains('compact-mode'));
+  markDirty();
+}
+function updateCompactBtn(isCompact) {
+  const eyeSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+  document.getElementById('toggleCompactBtn').innerHTML = eyeSVG + (isCompact ? ' Zobrazit detaily' : ' Zobrazit stručně');
+}
+
+/* ═══════════════════════════════════════════
+   24. SORTABLE
+═══════════════════════════════════════════ */
+function setupSortable() {
+  if (sortableInstance) sortableInstance.destroy();
+  sortableInstance = Sortable.create(document.getElementById('flow-container'), {
+    handle:            '.drag-handle',
+    animation:         180,
+    easing:            'cubic-bezier(0.25, 1, 0.5, 1)',
+    forceFallback:     true,
+    fallbackTolerance: 5,
+    ghostClass:        'sortable-ghost',
+    chosenClass:       'sortable-chosen',
+    dragClass:         'sortable-drag',
+    onEnd() { recalculateAll(); markDirty(); },
+  });
+}
+
+/* ═══════════════════════════════════════════
+   25. PASTE — strip HTML in editors
+═══════════════════════════════════════════ */
+document.addEventListener('paste', e => {
+  const target = e.target;
+  if (!target.isContentEditable) return;
+  e.preventDefault();
+  const plain = e.clipboardData.getData('text/plain');
+  if (document.queryCommandSupported('insertText')) {
+    document.execCommand('insertText', false, plain);
+  } else {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+    sel.deleteFromDocument();
+    sel.getRangeAt(0).insertNode(document.createTextNode(plain));
+    sel.collapseToEnd();
+  }
+  markDirty();
+}, true);
+
+/* ═══════════════════════════════════════════
+   26. FLOATING FORMAT TOOLBAR
+═══════════════════════════════════════════ */
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !sel.rangeCount) { hideFormatToolbar(); return; }
+  const range = sel.getRangeAt(0);
+  let node    = range.commonAncestorContainer;
+  while (node && node !== document.body) {
+    if (node.contentEditable === 'true' || node.isContentEditable) {
+      lastRange = range.cloneRange();
+      positionFormatToolbar(range);
+      return;
+    }
+    node = node.parentNode;
+  }
+  hideFormatToolbar();
+});
+function positionFormatToolbar(range) {
+  const toolbar = document.getElementById('formatToolbar');
+  const rect    = range.getBoundingClientRect();
+  if (!rect.width && !rect.height) { hideFormatToolbar(); return; }
+  toolbar.style.left = rect.left + rect.width / 2 + 'px';
+  toolbar.style.top  = rect.top + window.scrollY - 44 + 'px';
+  toolbar.classList.add('visible');
+}
+function hideFormatToolbar() {
+  document.getElementById('formatToolbar').classList.remove('visible');
+}
+function applyFmt(e, cmd, arg) {
+  e.preventDefault();
+
+  /*
+   * Restore order for floating toolbar:
+   * 1. Focus the editor first (so focus() doesn't wipe the range we set next)
+   * 2. Then restore the saved range
+   * 3. Then act
+   */
+  if (lastFocusedEditor) lastFocusedEditor.focus();
+  if (lastRange) {
+    try {
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(lastRange);
+    } catch (_) {}
+  }
+
+  if (cmd === 'callout') {
+    if (lastFocusedEditor) insertCustomBlock(lastFocusedEditor, 'cb-callout');
+  } else if (cmd === 'activity') {
+    if (lastFocusedEditor) insertCustomBlock(lastFocusedEditor, 'cb-activity');
+  } else if (cmd === 'formatBlock') {
+    /* Route through the robust DOM functions that won't swallow adjacent lists */
+    if (lastFocusedEditor) {
+      if (arg === 'H3' || arg === 'h3') {
+        insertHeadingInEditor(lastFocusedEditor);
+      } else {
+        insertParagraphInEditor(lastFocusedEditor);
+      }
+    }
+  } else {
+    document.execCommand(cmd, false, null);
+  }
+  markDirty();
+}
+
+/* ═══════════════════════════════════════════
+   27. FILE & EXPORT MODAL
+═══════════════════════════════════════════ */
+function openExportModal() {
+  const hasAgenda  = !!currentAgendaId;
+  const entry      = agendaIndex.find(e => e.id === currentAgendaId);
+  const hasHandle  = entry?.hasHandle;
+  const fileSynced = entry?.fileSynced;
+
+  // Disable share/export cards when no agenda is open
+  document.querySelectorAll('#shareOpsGrid .export-card').forEach(card => {
+    card.disabled = !hasAgenda;
+  });
+
+  // Update Save card appearance
+  const saveCard = document.getElementById('modalSaveBtn');
+  const saveDesc = document.getElementById('modalSaveDesc');
+  if (saveCard) {
+    saveCard.disabled = !hasAgenda;
+    if (hasHandle && !fileSynced) {
+      saveCard.classList.add('has-pending-save');
+      saveDesc.textContent = `Neuložené změny — zapsat do ${entry.fileName}`;
+    } else {
+      saveCard.classList.remove('has-pending-save');
+      saveDesc.textContent = hasHandle
+        ? `Přepsat soubor ${entry.fileName}`
+        : 'Vybrat umístění a uložit';
+    }
+    document.getElementById('modalSaveAsBtn').disabled = !hasAgenda;
+  }
+
+  // Show API notice for unsupported browsers
+  document.getElementById('apiNotice').style.display = HAS_FS_API ? 'none' : 'flex';
+
+  document.getElementById('exportModal').classList.remove('hidden');
+}
+function closeExportModal() {
+  document.getElementById('exportModal').classList.add('hidden');
+}
+document.getElementById('exportModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('exportModal')) closeExportModal();
+});
+
+/* ─── Copy as plain text ─── */
+function exportCopyText() {
+  const state = getCurrentEditorState();
+  let text = stripHtml(state.title) + '\n' + stripHtml(state.subtitle) + '\n\n';
+  (state.blocks || []).forEach(b => {
+    text += `${b.startTime} – ${b.endTime}  (${b.duration} min)  ${stripHtml(b.title)}\n`;
+  });
+  navigator.clipboard.writeText(text)
+    .then(() => { setStatus('saved', 'Zkopírováno do schránky'); closeExportModal(); })
+    .catch(() => fallbackCopyText(text));
+}
+
+/* ─── Copy as HTML table ─── */
+function exportCopyTable() {
+  const state = getCurrentEditorState();
+  let html    = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">';
+  html += '<thead><tr style="background:#f0f2f6;font-weight:bold;"><td>Začátek</td><td>Konec</td><td>Trvání</td><td>Blok</td></tr></thead><tbody>';
+  (state.blocks || []).forEach(b => {
+    html += `<tr><td>${b.startTime}</td><td>${b.endTime}</td><td>${b.duration} min</td><td>${escHtml(stripHtml(b.title))}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  const clipItem = new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) });
+  navigator.clipboard.write([clipItem])
+    .then(() => { setStatus('saved', 'Tabulka zkopírována'); closeExportModal(); })
+    .catch(() => {
+      let tsv = 'Začátek\tKonec\tTrvání\tBlok\n';
+      (state.blocks || []).forEach(b => {
+        tsv += `${b.startTime}\t${b.endTime}\t${b.duration} min\t${stripHtml(b.title)}\n`;
+      });
+      fallbackCopyText(tsv);
+    });
+}
+
+/* ─── Export HTML (detailed) ─── */
+async function exportDetailedHTML() {
+  if (!currentAgendaId) return;
+  if (isDirty) await performIDBSave();
+  const record = await dbGet(currentAgendaId);
+  if (!record) return;
+  const filename = buildAgendaFilename(record.title, 'html').replace('.html', '_detailni.html');
+  downloadFile(buildExportHTML(record, false), filename, 'text/html;charset=utf-8');
+  closeExportModal();
+}
+
+/* ─── Export HTML (compact) ─── */
+async function exportCompactHTML() {
+  if (!currentAgendaId) return;
+  if (isDirty) await performIDBSave();
+  const record = await dbGet(currentAgendaId);
+  if (!record) return;
+  const filename = buildAgendaFilename(record.title, 'html').replace('.html', '_kompaktni.html');
+  downloadFile(buildExportHTML(record, true), filename, 'text/html;charset=utf-8');
+  closeExportModal();
+}
+
+/* ═══════════════════════════════════════════
+   28. EXPORT HTML BUILDER
+═══════════════════════════════════════════ */
+function buildExportHTML(state, compact) {
+  const title    = escHtml(stripHtml(state.title    || ''));
+  const subtitle = escHtml(stripHtml(state.subtitle || ''));
+
+  /* ── Blocks ── */
+  const blocksHtml = (state.blocks || []).map(b => {
+    const dur       = b.duration || Math.max(0, timeToMins(b.endTime) - timeToMins(b.startTime));
+    const titleText = escHtml(stripHtml(b.title));
+
+    if (b.type === 'break') {
+      return `
+<div class="break-block">
+  <span class="time-badge">${b.startTime}<span class="tsep">–</span>${b.endTime}</span>
+  <span class="dur-pill dur-break">${dur} min</span>
+  <strong class="break-title">${titleText}</strong>
+</div>`;
+    }
+
+    let contentHtml = '';
+    if (!compact && b.contentHtml) {
+      contentHtml = `\n  <div class="block-content">${b.contentHtml}</div>`;
+    } else if (!compact && Array.isArray(b.content)) {
+      /* Legacy content[] format */
+      const inner = b.content.map(cb => {
+        const h = cb.html || '';
+        switch (cb.type) {
+          case 'heading': return `<h3>${h}</h3>`;
+          case 'list':    return `<ul>${h}</ul>`;
+          case 'callout': return `<div class="cb-callout">${h}</div>`;
+          default:        return `<p>${h}</p>`;
+        }
+      }).join('');
+      contentHtml = `\n  <div class="block-content">${inner}</div>`;
+    }
+
+    return `
+<div class="block${compact ? ' block-compact' : ''}">
+  <div class="block-hd">
+    <span class="time-badge">${b.startTime}<span class="tsep">–</span>${b.endTime}</span>
+    <span class="dur-pill">${dur} min</span>
+    <strong class="block-title">${titleText}</strong>
+  </div>${contentHtml}
+</div>`;
+  }).join('');
+
+  /* ── Summary box ── */
+  const showSummary = !compact && (state.summaryVisible !== false);
+  const summaryHtml = showSummary ? `
+<div class="summary-box">
+  <div>
+    <div class="summary-label">${escHtml(stripHtml(state.summaryInputTitle  || ''))}</div>
+    <ul class="summary-list">${state.summaryInput  || ''}</ul>
+  </div>
+  <div>
+    <div class="summary-label">${escHtml(stripHtml(state.summaryOutputTitle || ''))}</div>
+    <ul class="summary-list">${state.summaryOutput || ''}</ul>
+  </div>
+</div>` : '';
+
+  /* ── Stylesheet — mirrors the builder's card-editor rules exactly ── */
+  const css = `
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', system-ui, sans-serif;
+  background: #F0F2F6;
+  color: #111827;
+  padding: 44px 20px 80px;
+  line-height: 1.6;
+}
+.wrap { max-width: 800px; margin: 0 auto; }
+
+/* ── Page header ── */
+.page-title {
+  font-size: 2.4rem; font-weight: 800; color: #050B14;
+  line-height: 1.15; margin-bottom: 6px;
+}
+.page-subtitle { font-size: 1rem; color: #6B7280; margin-bottom: 32px; }
+
+/* ── Summary box ── */
+.summary-box {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 22px;
+  background: #fff; border: 1px solid #E4E7ED;
+  border-radius: 16px; padding: 22px; margin-bottom: 32px;
+}
+.summary-label {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: #0D9488; margin-bottom: 8px;
+}
+.summary-list { padding-left: 18px; }
+.summary-list li { font-size: 0.9rem; margin-bottom: 4px; }
+
+/* ── Regular block card ── */
+.block {
+  background: #fff; border: 1px solid #E4E7ED;
+  border-radius: 16px; padding: 20px 24px;
+  margin-bottom: 16px; break-inside: avoid;
+}
+.block-hd {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding-bottom: 14px; margin-bottom: 14px;
+  border-bottom: 1px solid #E4E7ED;
+}
+.block-compact .block-hd { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+
+/* ── Break card ── */
+.break-block {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  background: #F8FAFC; border: 1px dashed #D1D5DB;
+  border-radius: 12px; margin-bottom: 16px;
+  break-inside: avoid;
+}
+.break-title { color: #4B5563; font-size: 0.92rem; font-weight: 600; }
+
+/* ── Time badge ── */
+.time-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #F1F5F9; color: #374151;
+  padding: 5px 12px; border-radius: 8px;
+  font-weight: 600; font-size: 0.88rem; flex-shrink: 0;
+}
+.tsep { color: #9CA3AF; font-size: 0.8em; }
+
+/* ── Duration pill ── */
+.dur-pill {
+  background: #F0FDFA; color: #0D9488;
+  padding: 4px 11px; border-radius: 20px;
+  font-weight: 600; font-size: 0.78rem;
+  border: 1px solid rgba(13,148,136,0.25); flex-shrink: 0;
+}
+.dur-break { background: #F1F5F9; color: #6B7280; border-color: #E2E8F0; }
+
+/* ── Block title ── */
+.block-title { font-size: 1.1rem; font-weight: 700; line-height: 1.35; }
+
+/* ── Content area — matches .card-editor exactly ── */
+.block-content {
+  font-size: 0.92rem; color: #374151; line-height: 1.65;
+}
+.block-content p {
+  margin: 0 0 8px;
+}
+.block-content p:last-child { margin-bottom: 0; }
+.block-content h3 {
+  font-size: 1rem; font-weight: 700; color: #111827;
+  margin: 14px 0 5px; line-height: 1.4;
+}
+.block-content h3:first-child { margin-top: 0; }
+.block-content ul,
+.block-content ol  { padding-left: 22px; margin: 4px 0 10px; }
+.block-content li  { margin-bottom: 4px; }
+
+/* Green callout — identical to builder */
+.block-content .cb-callout {
+  background: #F0FDFA;
+  border-left: 3px solid #0D9488;
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px; margin: 10px 0;
+  font-size: 0.88rem; color: #0F5449;
+}
+/* Grey activity block — identical to builder */
+.block-content .cb-activity {
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  padding: 10px 14px; margin: 10px 0;
+  font-size: 0.88rem; color: #374151;
+}
+.block-content .cb-callout p,
+.block-content .cb-callout h3,
+.block-content .cb-activity p,
+.block-content .cb-activity h3 { margin: 3px 0; }
+.block-content .cb-callout ul,
+.block-content .cb-callout ol,
+.block-content .cb-activity ul,
+.block-content .cb-activity ol { margin: 4px 0 6px; }
+
+/* ── Print ── */
+@media print {
+  body { background: white; padding: 0; font-size: 9pt; }
+  .wrap { max-width: 100%; }
+  .block, .break-block, .summary-box { break-inside: avoid; page-break-inside: avoid; }
+}`;
+
+  return `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>${css}</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-title">${title}</div>
+  <div class="page-subtitle">${subtitle}</div>
+  ${summaryHtml}
+  ${blocksHtml}
+</div>
+</body>
+</html>`;
+}
+
+/* ═══════════════════════════════════════════
+   29. FILE HELPERS
+═══════════════════════════════════════════ */
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function fallbackCopyText(text) {
+  const ta = Object.assign(document.createElement('textarea'), { value: text });
+  ta.style.cssText = 'position:fixed;opacity:0;';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  setStatus('saved', 'Zkopírováno');
+  closeExportModal();
+}
+
+/* ═══════════════════════════════════════════
+   30. BACKUP ALL AGENDAS
+═══════════════════════════════════════════ */
+async function downloadBackup() {
+  try {
+    const all = await dbGetAll();
+    if (all.length === 0) { setStatus('saved', 'Žádné agendy k zálohování'); return; }
+    const exportable = all.map(r => buildExportableState(r));
+    const filename   = `AgendaBuilder_Backup_${todayISO()}.json`;
+    downloadFile(JSON.stringify(exportable, null, 2), filename, 'application/json');
+    setStatus('saved', `Záloha stažena: ${filename}`);
+  } catch (err) {
+    console.error('Backup error:', err);
+    setStatus('saved', 'Chyba při vytváření zálohy');
+  }
+}
+
+/* ═══════════════════════════════════════════
+   31. KEYBOARD SHORTCUTS
+═══════════════════════════════════════════ */
+document.addEventListener('keydown', async e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    await saveCurrentFile();
+  }
+});
+
+/* ═══════════════════════════════════════════
+   32. GLOBAL CONTENTEDITABLE LISTENERS
+═══════════════════════════════════════════ */
+['agenda-title','agenda-subtitle','summary-input-title','summary-input','summary-output-title','summary-output'].forEach(id => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', markDirty);
+});
+
+window.addEventListener('beforeunload', e => {
+  if (isDirty) { performIDBSave(); e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ═══════════════════════════════════════════
+   33. LOCALSTORAGE MIGRATION
+   Migrates existing agendas from the old
+   localStorage-based storage into IndexedDB.
+═══════════════════════════════════════════ */
+async function migrateFromLocalStorage() {
+  const INDEX_KEY = 'agendabuilder_v3_index';
+  const DB_PREFIX = 'agendabuilder_v3_agenda_';
+  try {
+    const raw = localStorage.getItem(INDEX_KEY);
+    if (!raw) return 0;
+    const idx     = JSON.parse(raw);
+    const entries = Object.values(idx);
+    let migrated  = 0;
+    for (const e of entries) {
+      const existing = await dbGet(e.id);
+      if (existing) continue;
+      const rawData = localStorage.getItem(DB_PREFIX + e.id);
+      if (!rawData) continue;
+      const data = JSON.parse(rawData);
+      const record = {
+        ...normalizeAgendaData(data),
+        id:         e.id,
+        updated:    e.updated || Date.now(),
+        fileHandle: null,
+        fileName:   null,
+        fileSynced: true,
+      };
+      await dbPut(record);
+      migrated++;
+    }
+    if (migrated > 0) console.log(`[AgendaBuilder] Migrated ${migrated} agendas from localStorage → IndexedDB`);
+    return migrated;
+  } catch (err) {
+    console.warn('[AgendaBuilder] Migration error:', err);
+    return 0;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   34. INIT
+═══════════════════════════════════════════ */
+(async function init() {
+  try {
+    await openDB();
+    await migrateFromLocalStorage();
+    await refreshIndex();
+
+    renderSidebar();
+
+    if (agendaIndex.length === 0) {
+      await createNewAgenda();
+    } else {
+      await switchAgenda(agendaIndex[0].id);
+    }
+
+    // Periodic autosave safety net (every 15s)
+    setInterval(() => {
+      if (isDirty && currentAgendaId) performIDBSave();
+    }, 15000);
+
+  } catch (err) {
+    console.error('[AgendaBuilder] Init error:', err);
+    document.getElementById('emptyState').style.display = 'flex';
+  }
+})();
+/* ═══════════════════════════════════════════
+   35. FILE HANDLING API (PWA launch queue)
+   Fires when the OS opens a .agenda file by
+   double-click and routes it into the app.
+═══════════════════════════════════════════ */
+if ('launchQueue' in window) {
+  window.launchQueue.setConsumer(async launchParams => {
+    if (!launchParams.files || launchParams.files.length === 0) return;
+    const handle = launchParams.files[0];
+    try {
+      /* DB may not be ready yet if the consumer fires before init() resolves.
+         Poll briefly — in practice init() finishes in < 100 ms. */
+      let attempts = 0;
+      while (!idb && attempts++ < 50) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      if (!idb) { console.error('[AgendaBuilder] launchQueue: DB not ready'); return; }
+
+      const file   = await handle.getFile();
+      const text   = await file.text();
+      const data   = JSON.parse(text);
+
+      if (isDirty && currentAgendaId) await performIDBSave();
+
+      const newId  = genId();
+      const record = {
+        ...normalizeAgendaData(data),
+        id:         newId,
+        updated:    Date.now(),
+        fileHandle: handle,       // store handle so Ctrl+S works immediately
+        fileName:   handle.name,
+        fileSynced: true,
+      };
+      await dbPut(record);
+      await refreshIndex();
+      await switchAgenda(newId);
+      renderSidebar();
+      setStatus('saved', `Otevřeno: ${handle.name}`);
+    } catch (err) {
+      console.error('[AgendaBuilder] launchQueue error:', err);
+      setStatus('saved', 'Chyba při otevírání souboru');
+    }
+  });
+}
+
+</script>
+
+<!-- ── Service Worker registration ── -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('[AgendaBuilder] SW registered:', reg.scope))
+      .catch(err => console.warn('[AgendaBuilder] SW registration failed:', err));
+  });
+}
+</script>
+</body>
+</html>
