@@ -808,6 +808,131 @@
       .flow-item     { break-inside: avoid !important; page-break-inside: avoid !important; }
       .page-header   { break-after:  avoid !important; }
     }
+
+    /* ═══════════════════════════════════════════
+       WELCOME OVERLAY
+    ═══════════════════════════════════════════ */
+    .welcome-overlay {
+      position: fixed; inset: 0; z-index: 9000;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at 60% 40%, #2d1b69 0%, #13192A 55%, #0a0f1e 100%);
+      animation: wOverlayIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    .welcome-overlay.hiding {
+      animation: wOverlayOut 0.35s cubic-bezier(0.4, 0, 1, 1) both;
+    }
+    @keyframes wOverlayIn  { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes wOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+
+    .welcome-card {
+      text-align: center; padding: 56px 48px 48px;
+      max-width: 540px; width: 90%;
+      animation: wCardIn 0.6s 0.1s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+    @keyframes wCardIn { from { opacity:0; transform: translateY(28px) scale(0.97); } to { opacity:1; transform: none; } }
+
+    .welcome-logo {
+      width: 88px; height: 88px; border-radius: 22px; margin: 0 auto 28px;
+      box-shadow: 0 8px 40px rgba(139,92,246,0.45), 0 0 0 1px rgba(255,255,255,0.08);
+      display: block; object-fit: cover;
+    }
+
+    .welcome-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(139,92,246,0.18); border: 1px solid rgba(139,92,246,0.35);
+      color: #c4b5fd; font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 4px 12px; border-radius: 20px; margin-bottom: 20px;
+    }
+
+    .welcome-headline {
+      font-size: 2.2rem; font-weight: 800; line-height: 1.15;
+      color: #fff; margin-bottom: 14px;
+      background: linear-gradient(135deg, #fff 30%, #c4b5fd 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .welcome-sub {
+      font-size: 0.95rem; color: rgba(255,255,255,0.55);
+      line-height: 1.65; margin-bottom: 10px;
+    }
+
+    .welcome-install-box {
+      background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.3);
+      border-radius: 12px; padding: 14px 18px; margin: 22px 0 32px;
+      display: flex; align-items: flex-start; gap: 12px; text-align: left;
+    }
+    .welcome-install-icon {
+      flex-shrink: 0; margin-top: 2px;
+      color: #a78bfa;
+    }
+    .welcome-install-text {
+      font-size: 0.82rem; color: rgba(255,255,255,0.7); line-height: 1.6;
+    }
+    .welcome-install-text strong { color: #c4b5fd; font-weight: 700; }
+
+    .welcome-actions {
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .btn-welcome-primary {
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      padding: 15px 28px; border-radius: 14px; border: none; cursor: pointer;
+      font-family: var(--font); font-size: 1rem; font-weight: 700;
+      background: linear-gradient(135deg, #7c3aed, #4f46e5);
+      color: #fff; transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(124,58,237,0.45);
+    }
+    .btn-welcome-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(124,58,237,0.55); }
+    .btn-welcome-primary:active { transform: none; }
+
+    .btn-welcome-secondary {
+      display: flex; align-items: center; justify-content: center; gap: 9px;
+      padding: 13px 28px; border-radius: 14px; cursor: pointer;
+      font-family: var(--font); font-size: 0.92rem; font-weight: 600;
+      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.75); transition: all 0.2s;
+    }
+    .btn-welcome-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); color: #fff; }
+
+    /* ═══════════════════════════════════════════
+       DRAG & DROP OVERLAY
+    ═══════════════════════════════════════════ */
+    .drop-overlay {
+      position: fixed; inset: 0; z-index: 8000;
+      display: none; /* shown via JS */
+      align-items: center; justify-content: center;
+      background: rgba(13, 148, 136, 0.08);
+      backdrop-filter: blur(4px);
+      pointer-events: none;
+    }
+    .drop-overlay.active { display: flex; }
+
+    .drop-zone-inner {
+      width: calc(100% - 48px); height: calc(100% - 48px); max-width: 860px;
+      border: 3px dashed var(--primary); border-radius: 24px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+      animation: dropPulse 1.8s ease-in-out infinite;
+    }
+    @keyframes dropPulse {
+      0%, 100% { border-color: rgba(13,148,136,0.6); box-shadow: 0 0 0 0 rgba(13,148,136,0); }
+      50%       { border-color: rgba(13,148,136,1);   box-shadow: 0 0 40px rgba(13,148,136,0.18); }
+    }
+
+    .drop-zone-icon {
+      width: 72px; height: 72px; border-radius: 18px;
+      background: linear-gradient(135deg, var(--primary), #06b6d4);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 8px 32px rgba(13,148,136,0.4);
+      animation: dropBounce 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+    }
+    @keyframes dropBounce { from { opacity:0; transform: scale(0.5); } to { opacity:1; transform: scale(1); } }
+
+    .drop-zone-label {
+      font-size: 1.6rem; font-weight: 800; color: var(--primary);
+    }
+    .drop-zone-sub {
+      font-size: 0.88rem; color: var(--muted);
+    }
   </style>
 </head>
 <body>
@@ -957,6 +1082,52 @@
     </div>
 
   </main>
+</div>
+
+<!-- ════ WELCOME OVERLAY ════ -->
+<div class="welcome-overlay" id="welcomeOverlay" style="display:none;">
+  <div class="welcome-card">
+    <img src="icon.png" alt="Agenda Builder" class="welcome-logo" onerror="this.style.display='none'">
+    <div class="welcome-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      Desktop-class PWA
+    </div>
+    <h1 class="welcome-headline">Vítejte v Agenda&nbsp;Builderu</h1>
+    <p class="welcome-sub">Profesionální nástroj pro tvorbu workshopových agend. Pracujte offline, ukládejte přímo na disk a otevírejte soubory dvojklikem.</p>
+    <div class="welcome-install-box">
+      <svg class="welcome-install-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+      </svg>
+      <div class="welcome-install-text">
+        Pro nejlepší zážitek a otevírání <code>.agenda</code> souborů přímo z&nbsp;plochy si aplikaci <strong>NAINSTALUJTE</strong> — klikněte na ikonku&nbsp;<strong>⊞ monitoru</strong> v&nbsp;adresním řádku prohlížeče.
+      </div>
+    </div>
+    <div class="welcome-actions">
+      <button class="btn-welcome-primary" onclick="welcomeCreateNew()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Vytvořit novou agendu
+      </button>
+      <button class="btn-welcome-secondary" onclick="welcomeOpenFile()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+        </svg>
+        Otevřít soubor z disku
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ DRAG & DROP OVERLAY ════ -->
+<div class="drop-overlay" id="dropOverlay">
+  <div class="drop-zone-inner">
+    <div class="drop-zone-icon">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <div class="drop-zone-label">Hoďte soubor sem</div>
+    <div class="drop-zone-sub">Pustí .agenda nebo .json soubor pro okamžité otevření</div>
+  </div>
 </div>
 
 <!-- Status pill -->
@@ -2906,7 +3077,8 @@ async function migrateFromLocalStorage() {
     renderSidebar();
 
     if (agendaIndex.length === 0) {
-      await createNewAgenda();
+      // Fresh install — show the welcome overlay instead of auto-creating
+      showWelcomeOverlay();
     } else {
       await switchAgenda(agendaIndex[0].id);
     }
@@ -2921,6 +3093,132 @@ async function migrateFromLocalStorage() {
     document.getElementById('emptyState').style.display = 'flex';
   }
 })();
+
+/* ═══════════════════════════════════════════
+   36. WELCOME OVERLAY
+═══════════════════════════════════════════ */
+function showWelcomeOverlay() {
+  const el = document.getElementById('welcomeOverlay');
+  el.style.display = 'flex';
+  el.classList.remove('hiding');
+}
+
+function hideWelcomeOverlay(cb) {
+  const el = document.getElementById('welcomeOverlay');
+  el.classList.add('hiding');
+  el.addEventListener('animationend', () => {
+    el.style.display = 'none';
+    el.classList.remove('hiding');
+    if (cb) cb();
+  }, { once: true });
+}
+
+function welcomeCreateNew() {
+  hideWelcomeOverlay(async () => {
+    await createNewAgenda();
+  });
+}
+
+function welcomeOpenFile() {
+  hideWelcomeOverlay(() => {
+    openFromFile();
+  });
+}
+
+/* ═══════════════════════════════════════════
+   37. DRAG & DROP
+   Global window drop zone for .agenda/.json
+═══════════════════════════════════════════ */
+(function initDragDrop() {
+  let dragCounter = 0;
+
+  function showDropOverlay() {
+    document.getElementById('dropOverlay').classList.add('active');
+  }
+  function hideDropOverlay() {
+    document.getElementById('dropOverlay').classList.remove('active');
+  }
+
+  function hasAgendaFile(dt) {
+    if (!dt || !dt.items) return false;
+    return Array.from(dt.items).some(item => {
+      if (item.kind !== 'file') return false;
+      const name = (item.getAsFile && item.getAsFile()?.name) || '';
+      return item.type === 'application/x-agenda' ||
+             item.type === 'application/json' ||
+             name.endsWith('.agenda') ||
+             name.endsWith('.json');
+    });
+  }
+
+  window.addEventListener('dragenter', e => {
+    e.preventDefault();
+    dragCounter++;
+    if (dragCounter === 1) showDropOverlay();
+  }, false);
+
+  window.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  }, false);
+
+  window.addEventListener('dragleave', e => {
+    dragCounter--;
+    if (dragCounter <= 0) { dragCounter = 0; hideDropOverlay(); }
+  }, false);
+
+  window.addEventListener('drop', async e => {
+    e.preventDefault();
+    dragCounter = 0;
+    hideDropOverlay();
+
+    const files = Array.from(e.dataTransfer.files).filter(f =>
+      f.name.endsWith('.agenda') || f.name.endsWith('.json')
+    );
+    if (files.length === 0) {
+      setStatus('saved', 'Nepodporovaný formát — použijte .agenda nebo .json');
+      return;
+    }
+
+    let lastId = null;
+    for (const file of files) {
+      try {
+        const text   = await file.text();
+        const parsed = JSON.parse(text);
+        const items  = Array.isArray(parsed) ? parsed : [parsed];
+
+        for (const data of items) {
+          if (isDirty && currentAgendaId) await performIDBSave();
+          const newId  = genId();
+          const record = {
+            ...normalizeAgendaData(data),
+            id:         newId,
+            updated:    Date.now(),
+            fileHandle: null,   // drag-drop gives no FileSystemFileHandle
+            fileName:   null,
+            fileSynced: true,
+          };
+          await dbPut(record);
+          lastId = newId;
+        }
+      } catch {
+        setStatus('saved', `Chyba: ${file.name} není platný soubor agendy`);
+      }
+    }
+
+    if (lastId) {
+      // Hide the welcome overlay if visible (user just dropped a file on it)
+      const wo = document.getElementById('welcomeOverlay');
+      if (wo && wo.style.display !== 'none') wo.style.display = 'none';
+
+      await refreshIndex();
+      await switchAgenda(lastId);
+      renderSidebar();
+      setStatus('saved', files.length > 1 ? `Otevřeno ${files.length} souborů` : `Otevřeno: ${files[0].name}`);
+    }
+  }, false);
+})();
+
 /* ═══════════════════════════════════════════
    35. FILE HANDLING API (PWA launch queue)
    Fires when the OS opens a .agenda file by
@@ -2972,7 +3270,7 @@ if ('launchQueue' in window) {
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    navigator.serviceWorker.register('/agenda-builder/sw.js')
       .then(reg => console.log('[AgendaBuilder] SW registered:', reg.scope))
       .catch(err => console.warn('[AgendaBuilder] SW registration failed:', err));
   });
