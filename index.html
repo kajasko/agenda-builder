@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Agenda Builder</title>
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
   <meta name="theme-color" content="#0D9488">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -52,7 +53,21 @@
       width: var(--sidebar-w); background: var(--sidebar-bg);
       display: flex; flex-direction: column; flex-shrink: 0;
       overflow: hidden; position: relative;
+      transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
     }
+    .app-layout.sidebar-collapsed .sidebar {
+      width: 0;
+    }
+    /* Desktop collapse toggle button */
+    .sidebar-collapse-btn {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.45);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition); flex-shrink: 0;
+    }
+    .sidebar-collapse-btn:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+    @media (max-width: 768px) { .sidebar-collapse-btn { display: none; } }
     .sidebar::after {
       content: ''; position: absolute; top: 0; right: 0;
       width: 1px; height: 100%; background: rgba(255,255,255,0.06);
@@ -126,6 +141,15 @@
     }
     .agenda-item:hover .agenda-item-del { opacity: 1; }
     .agenda-item-del:hover { background: rgba(220,38,38,0.2); color: #f87171; }
+
+    /* ─── DISK ICON (file-linked agendas) ────── */
+    .agenda-disk-icon {
+      flex-shrink: 0; color: rgba(13,148,136,0.65);
+      display: flex; align-items: center;
+      transition: color var(--transition);
+    }
+    .agenda-item.active .agenda-disk-icon { color: rgba(13,148,136,1); }
+    .agenda-item:hover .agenda-disk-icon { color: rgba(13,148,136,0.9); }
 
     .sidebar-footer {
       padding: 12px 8px; border-top: 1px solid rgba(255,255,255,0.07);
@@ -384,7 +408,12 @@
     .block-title:focus { background: rgba(13,148,136,0.05); box-shadow: 0 0 0 2px var(--primary-border); }
 
     /* ─── CARD CONTENT ───────────────────────── */
-    .card-content { overflow: hidden; }
+    .card-content {
+      overflow: hidden;
+      max-height: 3000px; opacity: 1;
+      transition: max-height 0.38s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 0.25s ease;
+    }
 
     /* ─── CARD INLINE TOOLBAR ────────────────── */
     .card-toolbar {
@@ -488,7 +517,7 @@
     @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
     /* ─── COMPACT MODE ───────────────────────── */
-    body.compact-mode .card-content { display: none; }
+    body.compact-mode .card-content { max-height: 0; opacity: 0; pointer-events: none; }
     body.compact-mode .flow-wrapper::before { display: none; }
     body.compact-mode .flow-item::before { display: none; }
     body.compact-mode .summary-box { display: none !important; }
@@ -499,6 +528,12 @@
     body.compact-mode .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; flex-wrap: nowrap; }
     body.compact-mode .block-title { font-size: 1rem; }
     body.compact-mode .add-buttons { padding-left: 16px; }
+
+    /* ─── VIEW SWITCH TRANSITION ─────────────── */
+    @keyframes viewFadeIn  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes viewFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
+    body.view-switching .editor-wrap { animation: viewFadeOut 0.18s ease forwards; pointer-events: none; }
+    body.view-switched  .editor-wrap { animation: viewFadeIn  0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
     /* ─── ANIMATIONS ─────────────────────────── */
     @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
@@ -1036,11 +1071,18 @@
         </div>
         <span class="brand-name">Agenda Builder</span>
       </div>
-      <button class="new-agenda-btn" id="newAgendaBtn" title="Nová agenda" onclick="createNewAgenda()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
-          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-        </svg>
-      </button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="new-agenda-btn" id="newAgendaBtn" title="Nová agenda" onclick="createNewAgenda()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button class="sidebar-collapse-btn" id="sidebarCollapseBtn" title="Skrýt panel" onclick="toggleDesktopSidebar()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
     </div>
     <div style="padding: 12px 8px 4px;">
       <div class="sidebar-section-label">Moje agendy</div>
@@ -1194,7 +1236,7 @@
       </svg>
       <div class="welcome-guest-warning-text">
         <strong>Režim hosta (prohlížeč)</strong><br>
-        Otevírání <code>.agenda</code> souborů dvojklikem vyžaduje instalaci jako PWA. Klikněte na <strong>⊞</strong> v adresním řádku prohlížeče pro instalaci.
+        Bez instalace nebudou fungovat systémové funkce jako dvojklik na soubor. Klikněte na <strong>⊞</strong> v adresním řádku prohlížeče pro instalaci jako PWA.
       </div>
     </div>
 
@@ -1278,6 +1320,19 @@
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
     </svg>
   </button>
+</div>
+
+<!-- Duplicate agenda modal -->
+<div class="modal-overlay hidden" id="duplicateModal">
+  <div class="modal-box">
+    <h3>Agenda již existuje</h3>
+    <p id="duplicateModalText">Tuto agendu již v přehledu máte. Co chcete udělat?</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeDuplicateModal()">Zrušit</button>
+      <button class="btn" onclick="duplicateChoose('copy')">Vytvořit kopii</button>
+      <button class="btn btn-primary" onclick="duplicateChoose('update')">Aktualizovat (přepsat)</button>
+    </div>
+  </div>
 </div>
 
 <!-- Delete agenda modal -->
@@ -1719,12 +1774,40 @@ async function openFromFile() {
 
     for (const data of items) {
       if (isDirty && currentAgendaId) await performIDBSave();
-      const newId  = genId();
+
+      // Duplicate check (only for single-file opens)
+      const existing = items.length === 1 ? findDuplicate(data, handle.name) : null;
+      let targetId   = null;
+
+      if (existing) {
+        const action = await showDuplicateModal(existing, data, handle);
+        if (action === 'cancel') return;
+        if (action === 'update') {
+          // Overwrite existing record, keep its id
+          const existingRec = await dbGet(existing.id);
+          const updatedRec  = {
+            ...(existingRec || {}),
+            ...normalizeAgendaData(data),
+            id:               existing.id,
+            updated:          Date.now(),
+            fileHandle:       handle,
+            fileName:         handle.name,
+            fileSynced:       true,
+            fileDisconnected: false,
+          };
+          await dbPut(updatedRec);
+          targetId = existing.id;
+          lastId   = existing.id;
+          continue;
+        }
+        // 'copy' falls through to create a new record below
+      }
+
+      const newId  = targetId || genId();
       const record = {
         ...normalizeAgendaData(data),
         id:               newId,
         updated:          Date.now(),
-        // Only link handle for single-file opens (not bulk backup)
         fileHandle:       items.length === 1 ? handle : null,
         fileName:         items.length === 1 ? handle.name : null,
         fileSynced:       true,
@@ -1748,6 +1831,42 @@ async function openFromFile() {
   }
 }
 
+/* ═══════════════════════════════════════════
+   DUPLICATE CHECK HELPERS
+═══════════════════════════════════════════ */
+let _dupResolve = null;
+let _dupData    = null;
+let _dupHandle  = null;
+
+function findDuplicate(data, fileName) {
+  const inTitle = stripHtml(data.title || '').trim().toLowerCase();
+  return agendaIndex.find(e => {
+    if (inTitle && stripHtml(e.title || '').trim().toLowerCase() === inTitle) return true;
+    if (fileName && e.fileName && e.fileName === fileName) return true;
+    return false;
+  }) || null;
+}
+
+function showDuplicateModal(existing, data, handle) {
+  _dupData   = data;
+  _dupHandle = handle;
+  const title = stripHtml(existing.title || 'Bez názvu');
+  document.getElementById('duplicateModalText').textContent =
+    `"${title}" již v přehledu máte. Chcete ji aktualizovat (přepsat), nebo vytvořit novou kopii?`;
+  document.getElementById('duplicateModal').classList.remove('hidden');
+  return new Promise(res => { _dupResolve = res; });
+}
+
+function closeDuplicateModal() {
+  document.getElementById('duplicateModal').classList.add('hidden');
+  if (_dupResolve) { _dupResolve('cancel'); _dupResolve = null; }
+}
+
+async function duplicateChoose(action) {
+  document.getElementById('duplicateModal').classList.add('hidden');
+  if (_dupResolve) { _dupResolve(action); _dupResolve = null; }
+}
+
 /* Fallback import for Firefox/Safari */
 function importAgendaFallback(input) {
   const file = input.files[0];
@@ -1761,6 +1880,30 @@ function importAgendaFallback(input) {
 
       let lastId = null;
       for (const data of items) {
+        // Duplicate check for single-file imports
+        const existing = items.length === 1 ? findDuplicate(data, null) : null;
+
+        if (existing) {
+          closeExportModal();
+          const action = await showDuplicateModal(existing, data, null);
+          if (action === 'cancel') return;
+          if (action === 'update') {
+            const existingRec = await dbGet(existing.id);
+            const updatedRec  = {
+              ...(existingRec || {}),
+              ...normalizeAgendaData(data),
+              id:         existing.id,
+              updated:    Date.now(),
+              fileHandle: existingRec?.fileHandle ?? null,
+              fileName:   existingRec?.fileName   ?? null,
+              fileSynced: true,
+            };
+            await dbPut(updatedRec);
+            lastId = existing.id;
+            continue;
+          }
+        }
+
         const newId  = genId();
         const record = {
           ...normalizeAgendaData(data),
@@ -1794,7 +1937,7 @@ function buildExportableState(record) {
 /* ═══════════════════════════════════════════
    9. STATUS PILL
 ═══════════════════════════════════════════ */
-function setStatus(state, text) {
+function setStatus(state, text, durationMs) {
   const pill   = document.getElementById('statusPill');
   const textEl = document.getElementById('statusText');
   pill.classList.remove('saving');
@@ -1804,7 +1947,8 @@ function setStatus(state, text) {
   if (state === 'saving') {
     pill.classList.add('saving');
   } else {
-    statusHideTimer = setTimeout(() => pill.classList.remove('visible'), 2800);
+    const ms = durationMs || (text.length > 40 ? 4500 : 2800);
+    statusHideTimer = setTimeout(() => pill.classList.remove('visible'), ms);
   }
 }
 
@@ -1854,7 +1998,8 @@ function renderSidebar() {
     return;
   }
 
-  const delIcon = `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  const delIcon  = `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  const diskIcon = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>`;
 
   list.innerHTML = agendaIndex.map(e => {
     const dotClass = !e.hasHandle
@@ -1867,6 +2012,9 @@ function renderSidebar() {
       : e.disconnected
         ? 'Soubor nedostupný — byl přesunut nebo smazán'
         : (e.fileSynced ? 'Synchronizováno se souborem' : 'Neuložené změny – stiskni Ctrl+S');
+    const diskHtml = e.hasHandle
+      ? `<span class="agenda-disk-icon" title="${e.fileName || 'Soubor na disku'}">${diskIcon}</span>`
+      : '';
 
     return `
       <div class="agenda-item ${e.id === currentAgendaId ? 'active' : ''}" onclick="switchAgenda('${e.id}')">
@@ -1875,6 +2023,7 @@ function renderSidebar() {
           <div class="agenda-item-title">${escHtml(stripHtml(e.title) || 'Bez názvu')}</div>
           <div class="agenda-item-meta">${relTime(e.updated)}</div>
         </div>
+        ${diskHtml}
         <button class="agenda-item-del" onclick="promptDeleteAgenda(event,'${e.id}','${escHtml(stripHtml(e.title) || 'Bez názvu')}')" title="Smazat">${delIcon}</button>
       </div>`;
   }).join('');
@@ -2046,7 +2195,11 @@ function loadStateIntoEditor(record) {
 function promptDeleteAgenda(e, id, title) {
   e.stopPropagation();
   pendingDeleteId = id;
-  document.getElementById('deleteModalText').textContent = `"${title}" bude trvale odstraněna.`;
+  const entry = agendaIndex.find(x => x.id === id);
+  const suffix = entry?.hasHandle
+    ? ' Soubor na vašem disku zůstane nedotčen.'
+    : ' Tato akce je nevratná.';
+  document.getElementById('deleteModalText').textContent = `"${title}" bude odstraněna z přehledu.${suffix}`;
   document.getElementById('deleteModal').classList.remove('hidden');
 }
 function closeDeleteModal() {
@@ -2055,6 +2208,8 @@ function closeDeleteModal() {
 }
 async function confirmDeleteAgenda() {
   if (!pendingDeleteId) return;
+  const deletingEntry = agendaIndex.find(e => e.id === pendingDeleteId);
+  const hadFile = deletingEntry?.hasHandle;
   await dbDelete(pendingDeleteId);
   await refreshIndex();
 
@@ -2071,6 +2226,9 @@ async function confirmDeleteAgenda() {
   }
   closeDeleteModal();
   renderSidebar();
+  if (hadFile) {
+    setStatus('saved', 'Agenda odstraněna z přehledu — soubor na disku zůstává nedotčen');
+  }
 }
 
 /* ═══════════════════════════════════════════
@@ -2673,8 +2831,14 @@ function selectAll(el) {
 }
 
 /* ═══════════════════════════════════════════
-   22b. MOBILE SIDEBAR TOGGLE
+   22b. SIDEBAR TOGGLES (mobile + desktop)
 ═══════════════════════════════════════════ */
+function toggleDesktopSidebar() {
+  const layout = document.getElementById('appLayout');
+  if (!layout) return;
+  layout.classList.toggle('sidebar-collapsed');
+}
+
 function toggleMobileSidebar() {
   const layout = document.getElementById('appLayout');
   if (!layout) return;
@@ -2692,9 +2856,18 @@ function toggleMobileSidebar() {
    23. COMPACT MODE
 ═══════════════════════════════════════════ */
 function toggleCompactMode() {
-  document.body.classList.toggle('compact-mode');
-  updateCompactBtn(document.body.classList.contains('compact-mode'));
-  markDirty();
+  const body = document.body;
+  body.classList.add('view-switching');
+  body.classList.remove('view-switched');
+
+  setTimeout(() => {
+    body.classList.toggle('compact-mode');
+    body.classList.remove('view-switching');
+    body.classList.add('view-switched');
+    updateCompactBtn(body.classList.contains('compact-mode'));
+    markDirty();
+    setTimeout(() => body.classList.remove('view-switched'), 400);
+  }, 180);
 }
 function updateCompactBtn(isCompact) {
   const eyeSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -2846,6 +3019,9 @@ function closeExportModal() {
 }
 document.getElementById('exportModal').addEventListener('click', e => {
   if (e.target === document.getElementById('exportModal')) closeExportModal();
+});
+document.getElementById('duplicateModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('duplicateModal')) closeDuplicateModal();
 });
 
 /* ─── Copy as plain text ─── */
@@ -3225,11 +3401,23 @@ async function migrateFromLocalStorage() {
 
     renderSidebar();
 
-    if (agendaIndex.length === 0) {
-      // Fresh install — show the welcome overlay instead of auto-creating
-      showWelcomeOverlay();
+    const isStandalonePWA = window.matchMedia('(display-mode: standalone)').matches ||
+                            window.navigator.standalone === true;
+
+    if (isStandalonePWA) {
+      // Installed PWA: always skip welcome overlay
+      if (agendaIndex.length > 0) {
+        await switchAgenda(agendaIndex[0].id);
+      } else {
+        document.getElementById('emptyState').style.display = 'flex';
+      }
     } else {
-      await switchAgenda(agendaIndex[0].id);
+      // Browser mode
+      if (agendaIndex.length === 0) {
+        showWelcomeOverlay();
+      } else {
+        await switchAgenda(agendaIndex[0].id);
+      }
     }
 
     // Periodic autosave safety net (every 15s)
@@ -3343,12 +3531,32 @@ function welcomeOpenFile() {
 
         for (const data of items) {
           if (isDirty && currentAgendaId) await performIDBSave();
+
+          // Duplicate check for single-file drops
+          const existing = items.length === 1 ? findDuplicate(data, file.name) : null;
+          if (existing) {
+            const action = await showDuplicateModal(existing, data, null);
+            if (action === 'cancel') continue;
+            if (action === 'update') {
+              const existingRec = await dbGet(existing.id);
+              const updatedRec  = {
+                ...(existingRec || {}),
+                ...normalizeAgendaData(data),
+                id:         existing.id,
+                updated:    Date.now(),
+              };
+              await dbPut(updatedRec);
+              lastId = existing.id;
+              continue;
+            }
+          }
+
           const newId  = genId();
           const record = {
             ...normalizeAgendaData(data),
             id:         newId,
             updated:    Date.now(),
-            fileHandle: null,   // drag-drop gives no FileSystemFileHandle
+            fileHandle: null,
             fileName:   null,
             fileSynced: true,
           };
