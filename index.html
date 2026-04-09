@@ -529,11 +529,6 @@
     body.compact-mode .block-title { font-size: 1rem; }
     body.compact-mode .add-buttons { padding-left: 16px; }
 
-    /* ─── VIEW SWITCH TRANSITION ─────────────── */
-    @keyframes viewFadeIn  { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes viewFadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
-    body.view-switching .editor-wrap { animation: viewFadeOut 0.18s ease forwards; pointer-events: none; }
-    body.view-switched  .editor-wrap { animation: viewFadeIn  0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
 
     /* ─── ANIMATIONS ─────────────────────────── */
     @keyframes fadeIn    { from { opacity: 0; } to { opacity: 1; } }
@@ -2856,18 +2851,9 @@ function toggleMobileSidebar() {
    23. COMPACT MODE
 ═══════════════════════════════════════════ */
 function toggleCompactMode() {
-  const body = document.body;
-  body.classList.add('view-switching');
-  body.classList.remove('view-switched');
-
-  setTimeout(() => {
-    body.classList.toggle('compact-mode');
-    body.classList.remove('view-switching');
-    body.classList.add('view-switched');
-    updateCompactBtn(body.classList.contains('compact-mode'));
-    markDirty();
-    setTimeout(() => body.classList.remove('view-switched'), 400);
-  }, 180);
+  document.body.classList.toggle('compact-mode');
+  updateCompactBtn(document.body.classList.contains('compact-mode'));
+  markDirty();
 }
 function updateCompactBtn(isCompact) {
   const eyeSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
