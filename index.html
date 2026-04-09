@@ -68,8 +68,9 @@
       background: linear-gradient(135deg, var(--primary), #06b6d4);
       border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0;
+      flex-shrink: 0; overflow: hidden;
     }
+    .brand-icon img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; display: block; }
     .brand-name { font-size: 0.85rem; font-weight: 700; color: #fff; letter-spacing: 0.02em; text-transform: uppercase; }
 
     .new-agenda-btn {
@@ -105,9 +106,10 @@
       width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
       transition: background 0.4s ease, box-shadow 0.4s ease; margin-top: 1px;
     }
-    .sync-dot.local    { background: rgba(255,255,255,0.2); }
-    .sync-dot.unsaved  { background: #FBBF24; animation: pulse-sync 2.2s ease-in-out infinite; }
-    .sync-dot.synced   { background: #34D399; }
+    .sync-dot.local        { background: rgba(255,255,255,0.2); }
+    .sync-dot.unsaved      { background: #FBBF24; animation: pulse-sync 2.2s ease-in-out infinite; }
+    .sync-dot.synced       { background: #34D399; }
+    .sync-dot.disconnected { background: #6B7280; }
     @keyframes pulse-sync {
       0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(251,191,36,0.5); }
       60%       { opacity: 0.8; box-shadow: 0 0 0 5px rgba(251,191,36,0); }
@@ -894,6 +896,18 @@
     }
     .btn-welcome-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.25); color: #fff; }
 
+    /* Guest mode warning */
+    .welcome-guest-warning {
+      background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.35);
+      border-radius: 12px; padding: 12px 16px; margin: 16px 0 24px;
+      display: flex; align-items: flex-start; gap: 11px; text-align: left;
+    }
+    .welcome-guest-warning svg { flex-shrink: 0; margin-top: 2px; color: #FBBF24; }
+    .welcome-guest-warning-text {
+      font-size: 0.8rem; color: rgba(255,255,255,0.65); line-height: 1.6;
+    }
+    .welcome-guest-warning-text strong { color: #FBBF24; font-weight: 700; }
+
     /* ═══════════════════════════════════════════
        DRAG & DROP OVERLAY
     ═══════════════════════════════════════════ */
@@ -933,22 +947,92 @@
     .drop-zone-sub {
       font-size: 0.88rem; color: var(--muted);
     }
+
+    /* ═══════════════════════════════════════════
+       MOBILE SIDEBAR TOGGLE BUTTON (fixed)
+    ═══════════════════════════════════════════ */
+    .sidebar-mobile-btn {
+      display: none; position: fixed; top: 14px; left: 14px; z-index: 400;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--sidebar-bg); border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.8); cursor: pointer;
+      align-items: center; justify-content: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+      transition: all var(--transition);
+    }
+    .sidebar-mobile-btn:hover { background: var(--primary); border-color: var(--primary); }
+
+    /* Sidebar backdrop */
+    .sidebar-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 299;
+      backdrop-filter: blur(2px);
+    }
+    .app-layout.sidebar-open .sidebar-backdrop { display: block; }
+
+    /* ═══════════════════════════════════════════
+       MOBILE RESPONSIVE — max 768px
+    ═══════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* Show hamburger */
+      .sidebar-mobile-btn { display: flex; }
+
+      /* Sidebar: slide-in drawer */
+      .sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 300;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: none;
+      }
+      .app-layout.sidebar-open .sidebar {
+        transform: translateX(0);
+        box-shadow: 6px 0 24px rgba(0,0,0,0.35);
+      }
+
+      /* Main content takes full width */
+      .main-content { width: 100%; }
+
+      /* Topbar padding */
+      .editor-topbar { padding: 10px 15px 10px 62px; }
+
+      /* Container padding */
+      .container { padding: 20px 15px 80px; }
+
+      /* Agenda title font size */
+      .agenda-title { font-size: 1.8rem; }
+
+      /* Cards full viewport width */
+      .card { width: 100%; }
+
+      /* Tighten up the flow timeline */
+      .flow-wrapper::before { left: 8px; }
+      .flow-item::before { left: 2px; }
+      .drag-handle { width: 24px; padding-top: 20px; }
+
+      /* Add buttons stacked */
+      .add-buttons { flex-direction: column; padding-left: 0; }
+
+      /* Summary box single column */
+      .summary-box { grid-template-columns: 1fr; gap: 16px; }
+
+      /* Export grid single column */
+      .export-grid, .export-grid-3 { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
-<div class="app-layout">
+<div class="app-layout" id="appLayout">
+
+  <!-- Mobile sidebar backdrop -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleMobileSidebar()"></div>
 
   <!-- ════ SIDEBAR ════ -->
-  <aside class="sidebar">
+  <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-brand">
         <div class="brand-icon">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
+          <img src="icon.png" alt="Agenda Builder" onerror="this.style.display='none'">
         </div>
         <span class="brand-name">Agenda Builder</span>
       </div>
@@ -1102,6 +1186,18 @@
         Pro nejlepší zážitek a otevírání <code>.agenda</code> souborů přímo z&nbsp;plochy si aplikaci <strong>NAINSTALUJTE</strong> — klikněte na ikonku&nbsp;<strong>⊞ monitoru</strong> v&nbsp;adresním řádku prohlížeče.
       </div>
     </div>
+    <!-- Guest mode warning — shown only when not running as installed PWA -->
+    <div class="welcome-guest-warning" id="welcomeGuestWarning" style="display:none;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div class="welcome-guest-warning-text">
+        <strong>Režim hosta (prohlížeč)</strong><br>
+        Otevírání <code>.agenda</code> souborů dvojklikem vyžaduje instalaci jako PWA. Klikněte na <strong>⊞</strong> v adresním řádku prohlížeče pro instalaci.
+      </div>
+    </div>
+
     <div class="welcome-actions">
       <button class="btn-welcome-primary" onclick="welcomeCreateNew()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1116,6 +1212,13 @@
     </div>
   </div>
 </div>
+
+<!-- Mobile sidebar toggle (fixed, visible only on mobile) -->
+<button class="sidebar-mobile-btn" id="sidebarMobileBtn" onclick="toggleMobileSidebar()" title="Menu">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
 
 <!-- ════ DRAG & DROP OVERLAY ════ -->
 <div class="drop-overlay" id="dropOverlay">
@@ -1381,12 +1484,13 @@ let agendaIndex = [];
 async function refreshIndex() {
   const all = await dbGetAll();
   agendaIndex = all.map(r => ({
-    id:         r.id,
-    title:      r.title || '',
-    updated:    r.updated || 0,
-    hasHandle:  !!r.fileHandle,
-    fileSynced: r.fileSynced !== false,
-    fileName:   r.fileName   || null,
+    id:           r.id,
+    title:        r.title || '',
+    updated:      r.updated || 0,
+    hasHandle:    !!r.fileHandle,
+    fileSynced:   r.fileSynced !== false,
+    fileName:     r.fileName   || null,
+    disconnected: !!r.fileDisconnected,
   })).sort((a, b) => b.updated - a.updated);
 }
 
@@ -1422,8 +1526,10 @@ function safeFileName(s) {
 }
 function todayISO() { return new Date().toISOString().slice(0,10); }
 function buildAgendaFilename(titleHtml, ext) {
-  const title = stripHtml(titleHtml) || 'Agenda';
-  return `Agenda_${safeFileName(title)}_${todayISO()}.${ext}`;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = titleHtml || '';
+  const title = tmp.textContent.trim() || 'Agenda';
+  return `${safeFileName(title)}_${todayISO()}.${ext}`;
 }
 
 /* ═══════════════════════════════════════════
@@ -1518,7 +1624,8 @@ async function writeToHandle(record) {
     await writable.write(JSON.stringify(exportData, null, 2));
     await writable.close();
 
-    record.fileSynced = true;
+    record.fileSynced       = true;
+    record.fileDisconnected = false;
     await dbPut(record);
     await refreshIndex();
     updateTopbarState();
@@ -1528,7 +1635,16 @@ async function writeToHandle(record) {
   } catch (err) {
     if (err.name !== 'AbortError') {
       console.error('Write error:', err);
-      setStatus('saved', 'Chyba při zápisu do souboru');
+      if (err.name === 'NotFoundError' || err.name === 'NotAllowedError') {
+        // File was moved, deleted, or access revoked — mark as disconnected
+        record.fileDisconnected = true;
+        await dbPut(record);
+        await refreshIndex();
+        renderSidebar();
+        setStatus('saved', 'Soubor nedostupný — byl přesunut nebo přístup byl zrušen');
+      } else {
+        setStatus('saved', 'Chyba při zápisu do souboru');
+      }
     }
     return false;
   }
@@ -1564,8 +1680,9 @@ async function openSaveAsDialog(record) {
         suggestedName: filename,
         types: [{ description: 'Agenda File', accept: { 'application/x-agenda': ['.agenda'] } }],
       });
-      record.fileHandle = handle;
-      record.fileName   = handle.name;
+      record.fileHandle       = handle;
+      record.fileName         = handle.name;
+      record.fileDisconnected = false;
       await writeToHandle(record);
     } catch (err) {
       if (err.name !== 'AbortError') {
@@ -1605,12 +1722,13 @@ async function openFromFile() {
       const newId  = genId();
       const record = {
         ...normalizeAgendaData(data),
-        id:         newId,
-        updated:    Date.now(),
+        id:               newId,
+        updated:          Date.now(),
         // Only link handle for single-file opens (not bulk backup)
-        fileHandle: items.length === 1 ? handle : null,
-        fileName:   items.length === 1 ? handle.name : null,
-        fileSynced: true,
+        fileHandle:       items.length === 1 ? handle : null,
+        fileName:         items.length === 1 ? handle.name : null,
+        fileSynced:       true,
+        fileDisconnected: false,
       };
       await dbPut(record);
       lastId = newId;
@@ -1739,8 +1857,16 @@ function renderSidebar() {
   const delIcon = `<svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 
   list.innerHTML = agendaIndex.map(e => {
-    const dotClass = !e.hasHandle ? 'local' : (e.fileSynced ? 'synced' : 'unsaved');
-    const dotTitle = !e.hasHandle ? 'Pouze lokálně' : (e.fileSynced ? 'Synchronizováno se souborem' : 'Neuložené změny – stiskni Ctrl+S');
+    const dotClass = !e.hasHandle
+      ? 'local'
+      : e.disconnected
+        ? 'disconnected'
+        : (e.fileSynced ? 'synced' : 'unsaved');
+    const dotTitle = !e.hasHandle
+      ? 'Pouze lokálně'
+      : e.disconnected
+        ? 'Soubor nedostupný — byl přesunut nebo smazán'
+        : (e.fileSynced ? 'Synchronizováno se souborem' : 'Neuložené změny – stiskni Ctrl+S');
 
     return `
       <div class="agenda-item ${e.id === currentAgendaId ? 'active' : ''}" onclick="switchAgenda('${e.id}')">
@@ -1877,6 +2003,13 @@ async function switchAgenda(id) {
   await refreshIndex();
   renderSidebar();
   updateTopbarState();
+
+  // Auto-close sidebar drawer on mobile after selection
+  const layout = document.getElementById('appLayout');
+  if (layout && layout.classList.contains('sidebar-open') &&
+      window.matchMedia('(max-width: 768px)').matches) {
+    toggleMobileSidebar();
+  }
 }
 
 function loadStateIntoEditor(record) {
@@ -2540,6 +2673,22 @@ function selectAll(el) {
 }
 
 /* ═══════════════════════════════════════════
+   22b. MOBILE SIDEBAR TOGGLE
+═══════════════════════════════════════════ */
+function toggleMobileSidebar() {
+  const layout = document.getElementById('appLayout');
+  if (!layout) return;
+  const isOpen = layout.classList.toggle('sidebar-open');
+  // Update hamburger icon to X when open
+  const btn = document.getElementById('sidebarMobileBtn');
+  if (btn) {
+    btn.innerHTML = isOpen
+      ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+      : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>`;
+  }
+}
+
+/* ═══════════════════════════════════════════
    23. COMPACT MODE
 ═══════════════════════════════════════════ */
 function toggleCompactMode() {
@@ -3099,6 +3248,11 @@ async function migrateFromLocalStorage() {
 ═══════════════════════════════════════════ */
 function showWelcomeOverlay() {
   const el = document.getElementById('welcomeOverlay');
+  // Detect if running as installed PWA (standalone mode)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+                       window.navigator.standalone === true;
+  const guestWarning = document.getElementById('welcomeGuestWarning');
+  if (guestWarning) guestWarning.style.display = isStandalone ? 'none' : 'flex';
   el.style.display = 'flex';
   el.classList.remove('hiding');
 }
