@@ -841,6 +841,104 @@
       .page-header   { break-after:  avoid !important; }
     }
 
+    /* ─── LEAD / FACILITATOR FIELD ──────────── */
+    .block-lead {
+      font-size: 0.75rem; font-weight: 500; color: var(--muted);
+      outline: none; border-radius: 4px; padding: 3px 8px;
+      border: 1px solid transparent; transition: all var(--transition);
+      min-width: 60px; max-width: 160px; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis; margin-left: auto; flex-shrink: 0;
+    }
+    .block-lead:hover { background: rgba(13,148,136,0.05); border-color: var(--border); }
+    .block-lead:focus { background: #fff; border-color: var(--primary-border); box-shadow: 0 0 0 2px rgba(13,148,136,0.12); outline: none; }
+    .block-lead[data-placeholder]:empty::before {
+      content: attr(data-placeholder); color: #C4C9D4; pointer-events: none;
+    }
+    body.leads-hidden .block-lead { display: none; }
+
+    /* ─── WORKSHOP MODE ──────────────────────── */
+    .ws-bar {
+      display: none; align-items: center; gap: 8px;
+      padding: 5px 10px 5px 12px; background: rgba(13,148,136,0.1);
+      border: 1px solid rgba(13,148,136,0.25); border-radius: 20px;
+      font-size: 0.78rem; font-weight: 600; color: var(--primary);
+    }
+    .ws-bar.active { display: flex; }
+    .ws-clock { font-family: var(--mono); font-size: 0.8rem; }
+    .ws-stop-btn {
+      width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(13,148,136,0.3);
+      background: transparent; color: var(--primary); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition); padding: 0;
+    }
+    .ws-stop-btn:hover { background: var(--error); border-color: var(--error); color: #fff; }
+
+    .flow-item.ws-active > .card {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.18), var(--shadow-md);
+    }
+    .flow-item.ws-behind > .card {
+      border-color: #F59E0B;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.2), var(--shadow-md);
+      animation: ws-pulse-warn 2.5s ease-in-out infinite;
+    }
+    @keyframes ws-pulse-warn {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,0.18), var(--shadow-md); }
+      50%       { box-shadow: 0 0 0 7px rgba(245,158,11,0.06), var(--shadow-md); }
+    }
+
+    .ws-block-controls {
+      display: flex; gap: 6px; padding-top: 10px; margin-top: 8px;
+      border-top: 1px solid var(--border); align-items: center;
+    }
+    .ws-ctrl-btn {
+      padding: 5px 13px; border-radius: 14px; font-family: var(--font);
+      font-size: 0.76rem; font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+      background: white; color: var(--text); transition: all var(--transition);
+    }
+    .ws-ctrl-btn:hover { background: var(--bg); }
+    .ws-ctrl-btn.primary { background: var(--primary); color: white; border-color: var(--primary); }
+    .ws-ctrl-btn.primary:hover { background: var(--primary-dark); }
+    .ws-status-label {
+      font-size: 0.71rem; font-weight: 600; margin-left: auto;
+      padding: 3px 9px; border-radius: 12px;
+      background: rgba(13,148,136,0.1); color: var(--primary);
+      border: 1px solid rgba(13,148,136,0.2);
+    }
+    .ws-status-label.behind { background: rgba(245,158,11,0.1); color: #B45309; border-color: rgba(245,158,11,0.25); }
+
+    /* ─── EXPORT SETTINGS MODAL ──────────────── */
+    .modal-settings { max-width: 440px; }
+    .settings-group { margin-bottom: 20px; }
+    .settings-group-label {
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+    }
+    .settings-checkboxes { display: flex; flex-direction: column; gap: 6px; }
+    .settings-checkbox-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      cursor: pointer; transition: all var(--transition);
+    }
+    .settings-checkbox-row:hover { border-color: var(--primary); background: var(--primary-light); }
+    .settings-checkbox-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--primary); cursor: pointer; }
+    .settings-checkbox-label { font-size: 0.85rem; font-weight: 500; cursor: pointer; }
+    .color-picker-row {
+      display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .color-picker-row input[type="color"] { width: 36px; height: 36px; border: none; background: none; cursor: pointer; border-radius: 6px; padding: 2px; }
+    .color-picker-label { font-size: 0.85rem; font-weight: 500; flex: 1; }
+    .color-picker-value { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+
+    /* ─── PRINT additions ───────────────────── */
+    @media print {
+      body.leads-hidden .block-lead { display: none !important; }
+      .ws-bar, .ws-block-controls { display: none !important; }
+      .block-lead { font-size: 7.5pt !important; color: #6B7280 !important; }
+    }
+
     /* ═══════════════════════════════════════════
        WELCOME OVERLAY
     ═══════════════════════════════════════════ */
@@ -1142,8 +1240,27 @@
             </svg>
             Zobrazit stručně
           </button>
+          <button class="btn btn-ghost btn-sm" id="toggleLeadsBtn" onclick="toggleLeadVisibility()" title="Skrýt/Zobrazit Leadery">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+            Leadery
+          </button>
         </div>
         <div class="topbar-right">
+          <!-- WS Mode bar -->
+          <div class="ws-bar" id="wsBar">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span class="ws-clock" id="wsClockDisplay">--:--</span>
+            <button class="ws-stop-btn" onclick="stopWSMode()" title="Ukončit WS Mode">
+              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <button class="btn btn-sm" id="wsStartBtn" onclick="startWSMode()" title="Spustit Live Workshop Mode">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Spustit WS
+          </button>
           <div id="topbarFileChip" class="file-chip">
             <div class="file-chip-dot"></div>
             <span class="file-chip-name" id="topbarFileName"></span>
@@ -1256,6 +1373,59 @@
     <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
   </svg>
 </button>
+
+<!-- Export Settings modal -->
+<div class="modal-overlay hidden" id="exportSettingsModal">
+  <div class="modal-box modal-settings">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Nastavení exportu</h3>
+        <p>Přizpůsobte výstup tabulky a barevné schéma</p>
+      </div>
+      <button class="modal-close" onclick="closeExportSettings()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Sloupce tabulky</div>
+      <div class="settings-checkboxes">
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="expColTime" checked>
+          <span class="settings-checkbox-label">Čas začátku</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="expColDuration" checked>
+          <span class="settings-checkbox-label">Délka (min)</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="expColTitle" checked>
+          <span class="settings-checkbox-label">Název bloku</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="expColLead">
+          <span class="settings-checkbox-label">Lead / Facilitátor</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Primární barva</div>
+      <div class="color-picker-row">
+        <input type="color" id="expColorPicker" value="#007E89" oninput="document.getElementById('expColorValue').textContent = this.value">
+        <span class="color-picker-label">Barva nadpisů &amp; akcí</span>
+        <span class="color-picker-value" id="expColorValue">#007E89</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" onclick="closeExportSettings()">Zrušit</button>
+      <button class="btn btn-primary" onclick="saveExportSettings()">Uložit nastavení</button>
+    </div>
+  </div>
+</div>
 
 <!-- ════ DRAG & DROP OVERLAY ════ -->
 <div class="drop-overlay" id="dropOverlay">
@@ -1416,6 +1586,15 @@
         <div class="export-card-title">Kopírovat jako tabulku</div>
         <div class="export-card-desc">HTML tabulka pro Excel / PPT</div>
       </button>
+      <button class="export-card" onclick="openExportSettings(); closeExportModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14M12 2v2M12 20v2M2 12h2M20 12h2"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Nastavení exportu</div>
+        <div class="export-card-desc">Sloupce, barva, personalizace</div>
+      </button>
       <button class="export-card" onclick="exportDetailedHTML()">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1571,6 +1750,12 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function stripHtml(s)    { return String(s || '').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim(); }
+function decodeEntities(s) {
+  const txt = document.createElement('textarea');
+  txt.innerHTML = String(s || '');
+  return txt.value;
+}
+function cleanText(s) { return decodeEntities(stripHtml(s)).replace(/\u00a0/g, ' ').trim(); }
 function safeFileName(s) {
   return String(s || 'Agenda').replace(/[\\/:*?"<>|]/g,'-').replace(/\s+/g,'-').slice(0,60);
 }
@@ -1593,6 +1778,18 @@ let sortableInstance  = null;
 let statusHideTimer   = null;
 let lastRange         = null;
 let lastFocusedEditor = null;
+
+/* ─── Export Settings (persisted to localStorage) ─── */
+const EXPORT_SETTINGS_KEY = 'agendabuilder_export_settings';
+let exportSettings = {
+  columns:      { time: true, duration: true, title: true, lead: false },
+  primaryColor: '#007E89',
+};
+
+/* ─── Workshop Mode state ─── */
+let wsMode        = false;
+let wsTimer       = null;
+let wsLeadsHidden = false;
 
 /* ═══════════════════════════════════════════
    6. SVG CONSTANTS
@@ -1760,6 +1957,31 @@ async function openFromFile() {
     const [handle] = await window.showOpenFilePicker({
       types: [{ description: 'Agenda File', accept: { 'application/x-agenda': ['.agenda'], 'application/json': ['.json'] } }],
     });
+
+    // Smart deduplication: check if this exact file handle is already open
+    const all = await dbGetAll();
+    for (const rec of all) {
+      if (rec.fileHandle) {
+        try {
+          const isSame = await rec.fileHandle.isSameEntry(handle);
+          if (isSame) {
+            // File already open — just switch focus to it
+            await refreshIndex();
+            await switchAgenda(rec.id);
+            // Flash the sidebar item
+            const el = document.querySelector(`.agenda-item[onclick*="${rec.id}"]`);
+            if (el) {
+              el.style.transition = 'background 0.15s';
+              el.style.background = 'rgba(13,148,136,0.35)';
+              setTimeout(() => { el.style.background = ''; }, 700);
+            }
+            setStatus('saved', `"${cleanText(rec.title) || 'Bez názvu'}" je již otevřena`);
+            return;
+          }
+        } catch {}
+      }
+    }
+
     const file   = await handle.getFile();
     const text   = await file.text();
     const parsed = JSON.parse(text);
@@ -2038,6 +2260,7 @@ function getCurrentEditorState() {
       endTime:   item.querySelector('.end-time').value,
       duration:  parseInt(item.querySelector('.duration-input')?.value) || 0,
       title:     item.querySelector('.block-title').innerHTML,
+      lead:      item.querySelector('.block-lead')?.textContent.trim() || '',
     };
     if (!isBreak) {
       const editor   = item.querySelector('.card-editor');
@@ -2074,8 +2297,8 @@ function normalizeAgendaData(data) {
     const dur = b.duration != null
       ? b.duration
       : Math.max(0, timeToMins(b.endTime) - timeToMins(b.startTime));
-    if (b.type !== 'block') return { ...b, duration: dur };
-    if (typeof b.contentHtml === 'string') return { ...b, duration: dur };
+    if (b.type !== 'block') return { ...b, duration: dur, lead: b.lead || '' };
+    if (typeof b.contentHtml === 'string') return { ...b, duration: dur, lead: b.lead || '' };
 
     // Migrate from content[] array format
     if (Array.isArray(b.content)) {
@@ -2088,7 +2311,7 @@ function normalizeAgendaData(data) {
           default:        return `<p>${h || ''}</p>`;
         }
       }).join('');
-      return { id: b.id, type: 'block', startTime: b.startTime, endTime: b.endTime, duration: dur, title: b.title, contentHtml };
+      return { id: b.id, type: 'block', startTime: b.startTime, endTime: b.endTime, duration: dur, title: b.title, contentHtml, lead: b.lead || '' };
     }
 
     // Migrate v2 description/tools/prep fields
@@ -2096,7 +2319,7 @@ function normalizeAgendaData(data) {
     if (b.description) parts.push(`<p>${b.description}</p>`);
     if (b.tools)       parts.push(`<p>${b.tools}</p>`);
     if (b.prep)        parts.push(`<blockquote class="cb-callout">${b.prep}</blockquote>`);
-    return { id: b.id, type: 'block', startTime: b.startTime, endTime: b.endTime, duration: dur, title: b.title, contentHtml: parts.join('') };
+    return { id: b.id, type: 'block', startTime: b.startTime, endTime: b.endTime, duration: dur, title: b.title, contentHtml: parts.join(''), lead: b.lead || '' };
   });
 
   return {
@@ -2138,6 +2361,7 @@ async function createNewAgenda() {
 async function switchAgenda(id) {
   if (id === currentAgendaId) return;
   if (isDirty && currentAgendaId) await performIDBSave();
+  if (wsMode) stopWSMode();
 
   const record = await dbGet(id);
   if (!record) return;
@@ -2257,6 +2481,7 @@ function buildBlockEl(block) {
   const dur = block.duration  != null ? block.duration : Math.max(0, timeToMins(et) - timeToMins(st));
   const titleHtml        = block.title || (block.type === 'break' ? 'Pauza' : 'Nový blok');
   const titlePlaceholder = block.type === 'break' ? 'Pauza' : 'Název bloku';
+  const leadHtml         = block.lead || '';
 
   item.innerHTML = `
     <div class="drag-handle" title="Přetáhni pro přeřazení">${DRAG_SVG}</div>
@@ -2275,6 +2500,7 @@ function buildBlockEl(block) {
           <span class="duration-unit">min</span>
         </div>
         <div class="block-title" contenteditable="true" data-placeholder="${titlePlaceholder}">${titleHtml}</div>
+        <div class="block-lead" contenteditable="true" data-placeholder="Lead / Facilitátor">${leadHtml}</div>
       </div>
       ${block.type !== 'break' ? '<div class="card-content"></div>' : ''}
     </div>`;
@@ -2290,6 +2516,7 @@ function buildBlockEl(block) {
   durInput.addEventListener('change',   () => { onTimeChange(item, 'duration'); markDirty(); });
   durInput.addEventListener('input',    () => { onTimeChange(item, 'duration'); markDirty(); });
   item.querySelector('.block-title').addEventListener('input', markDirty);
+  item.querySelector('.block-lead').addEventListener('input', markDirty);
 
   if (block.type !== 'break') {
     const cardContent = item.querySelector('.card-content');
@@ -3010,34 +3237,104 @@ document.getElementById('duplicateModal').addEventListener('click', e => {
   if (e.target === document.getElementById('duplicateModal')) closeDuplicateModal();
 });
 
+/* ─── Export Settings Modal ─── */
+function loadExportSettings() {
+  try {
+    const raw = localStorage.getItem(EXPORT_SETTINGS_KEY);
+    if (raw) exportSettings = { ...exportSettings, ...JSON.parse(raw) };
+  } catch {}
+  // Ensure all column keys exist (migration-safe)
+  exportSettings.columns = { time: true, duration: true, title: true, lead: false, ...exportSettings.columns };
+  exportSettings.primaryColor = exportSettings.primaryColor || '#007E89';
+}
+
+function openExportSettings() {
+  const s = exportSettings;
+  document.getElementById('expColTime').checked     = !!s.columns.time;
+  document.getElementById('expColDuration').checked = !!s.columns.duration;
+  document.getElementById('expColTitle').checked    = !!s.columns.title;
+  document.getElementById('expColLead').checked     = !!s.columns.lead;
+  const picker = document.getElementById('expColorPicker');
+  picker.value = s.primaryColor;
+  document.getElementById('expColorValue').textContent = s.primaryColor;
+  document.getElementById('exportSettingsModal').classList.remove('hidden');
+}
+
+function closeExportSettings() {
+  document.getElementById('exportSettingsModal').classList.add('hidden');
+}
+
+function saveExportSettings() {
+  exportSettings.columns.time     = document.getElementById('expColTime').checked;
+  exportSettings.columns.duration = document.getElementById('expColDuration').checked;
+  exportSettings.columns.title    = document.getElementById('expColTitle').checked;
+  exportSettings.columns.lead     = document.getElementById('expColLead').checked;
+  exportSettings.primaryColor     = document.getElementById('expColorPicker').value;
+  try { localStorage.setItem(EXPORT_SETTINGS_KEY, JSON.stringify(exportSettings)); } catch {}
+  closeExportSettings();
+  setStatus('saved', 'Nastavení exportu uloženo');
+}
+
+document.getElementById('exportSettingsModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('exportSettingsModal')) closeExportSettings();
+});
+
 /* ─── Copy as plain text ─── */
 function exportCopyText() {
   const state = getCurrentEditorState();
-  let text = stripHtml(state.title) + '\n' + stripHtml(state.subtitle) + '\n\n';
+  const col   = exportSettings.columns;
+  let text = cleanText(state.title) + '\n' + cleanText(state.subtitle) + '\n\n';
   (state.blocks || []).forEach(b => {
-    text += `${b.startTime} – ${b.endTime}  (${b.duration} min)  ${stripHtml(b.title)}\n`;
+    const parts = [];
+    if (col.time)     parts.push(`${b.startTime} – ${b.endTime}`);
+    if (col.duration) parts.push(`(${b.duration} min)`);
+    if (col.title)    parts.push(cleanText(b.title));
+    if (col.lead && b.lead) parts.push(`[${cleanText(b.lead)}]`);
+    text += parts.join('  ') + '\n';
   });
   navigator.clipboard.writeText(text)
     .then(() => { setStatus('saved', 'Zkopírováno do schránky'); closeExportModal(); })
     .catch(() => fallbackCopyText(text));
 }
 
-/* ─── Copy as HTML table ─── */
+/* ─── Copy as HTML table (clean, styled, no outer border, no header row) ─── */
 function exportCopyTable() {
-  const state = getCurrentEditorState();
-  let html    = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">';
-  html += '<thead><tr style="background:#f0f2f6;font-weight:bold;"><td>Začátek</td><td>Konec</td><td>Trvání</td><td>Blok</td></tr></thead><tbody>';
+  const state  = getCurrentEditorState();
+  const col    = exportSettings.columns;
+  const accent = exportSettings.primaryColor;
+
+  const cellStyle = `border: none; border-bottom: 1px solid #E8EAED; padding: 8px 12px; font-family: Arial, sans-serif; font-size: 11px; vertical-align: middle;`;
+  const rowStyle  = `border: none;`;
+
+  let rows = '';
   (state.blocks || []).forEach(b => {
-    html += `<tr><td>${b.startTime}</td><td>${b.endTime}</td><td>${b.duration} min</td><td>${escHtml(stripHtml(b.title))}</td></tr>`;
+    let cells = '';
+    if (col.time)
+      cells += `<td style="${cellStyle} font-weight:700; color:${accent}; white-space:nowrap;">${b.startTime}</td>`;
+    if (col.duration)
+      cells += `<td style="${cellStyle} color:#6B7280; white-space:nowrap;">${b.duration} min</td>`;
+    if (col.title)
+      cells += `<td style="${cellStyle}">${escHtml(cleanText(b.title))}</td>`;
+    if (col.lead)
+      cells += `<td style="${cellStyle} color:#6B7280;">${escHtml(cleanText(b.lead || ''))}</td>`;
+    rows += `<tr style="${rowStyle}">${cells}</tr>`;
   });
-  html += '</tbody></table>';
+
+  const html = `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;border:none;"><tbody>${rows}</tbody></table>`;
+
   const clipItem = new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) });
   navigator.clipboard.write([clipItem])
     .then(() => { setStatus('saved', 'Tabulka zkopírována'); closeExportModal(); })
     .catch(() => {
-      let tsv = 'Začátek\tKonec\tTrvání\tBlok\n';
+      const sep = '\t';
+      let tsv = '';
       (state.blocks || []).forEach(b => {
-        tsv += `${b.startTime}\t${b.endTime}\t${b.duration} min\t${stripHtml(b.title)}\n`;
+        const parts = [];
+        if (col.time)     parts.push(`${b.startTime}`);
+        if (col.duration) parts.push(`${b.duration} min`);
+        if (col.title)    parts.push(cleanText(b.title));
+        if (col.lead)     parts.push(cleanText(b.lead || ''));
+        tsv += parts.join(sep) + '\n';
       });
       fallbackCopyText(tsv);
     });
@@ -3315,6 +3612,136 @@ async function downloadBackup() {
 }
 
 /* ═══════════════════════════════════════════
+   31b. LIVE WORKSHOP MODE
+═══════════════════════════════════════════ */
+function startWSMode() {
+  if (!currentAgendaId) { setStatus('saved', 'Nejprve otevřete agendu'); return; }
+  wsMode = true;
+  document.getElementById('wsBar').classList.add('active');
+  document.getElementById('wsStartBtn').style.display = 'none';
+  tickWSMode();
+  wsTimer = setInterval(tickWSMode, 10000);
+  setStatus('saved', 'Live WS Mode spuštěn');
+}
+
+function stopWSMode() {
+  wsMode = false;
+  clearInterval(wsTimer);
+  wsTimer = null;
+  document.getElementById('wsBar').classList.remove('active');
+  document.getElementById('wsStartBtn').style.display = '';
+  document.getElementById('wsClockDisplay').textContent = '--:--';
+  // Clear all WS classes and remove injected controls
+  document.querySelectorAll('#flow-container .flow-item').forEach(item => {
+    item.classList.remove('ws-active', 'ws-behind');
+    item.querySelector('.ws-block-controls')?.remove();
+  });
+}
+
+function tickWSMode() {
+  if (!wsMode) return;
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  document.getElementById('wsClockDisplay').textContent = `${hh}:${mm}`;
+
+  const items = Array.from(document.querySelectorAll('#flow-container .flow-item'));
+  let activeIdx = -1;
+
+  // Find current active block
+  for (let i = 0; i < items.length; i++) {
+    const startMins = timeToMins(items[i].querySelector('.start-time').value);
+    const endMins   = timeToMins(items[i].querySelector('.end-time').value);
+    if (nowMins >= startMins && nowMins < endMins) { activeIdx = i; break; }
+  }
+
+  items.forEach((item, i) => {
+    const endMins = timeToMins(item.querySelector('.end-time').value);
+    const isBehind = activeIdx === -1 && nowMins > endMins && i === items.length - 1;
+
+    item.classList.toggle('ws-active', i === activeIdx);
+    item.classList.toggle('ws-behind', activeIdx !== -1
+      ? false
+      : i < items.length - 1
+        ? false
+        : isBehind);
+
+    // For the active block, show controls inside its card
+    const existingControls = item.querySelector('.ws-block-controls');
+    if (i === activeIdx) {
+      item.classList.remove('ws-behind');
+      const endMinsActive = timeToMins(item.querySelector('.end-time').value);
+      const isLate = nowMins >= endMinsActive;
+      if (isLate) item.classList.add('ws-behind');
+
+      if (!existingControls) {
+        const controls = document.createElement('div');
+        controls.className = 'ws-block-controls';
+        controls.innerHTML = `
+          <button class="ws-ctrl-btn" onclick="wsSkip()" title="Přeskočit tento blok">Přeskočit</button>
+          <button class="ws-ctrl-btn primary" onclick="wsNext()" title="Přejít na další blok">Další krok →</button>
+          <span class="ws-status-label${isLate ? ' behind' : ''}">${isLate ? '⚠ Zpoždění' : '▶ Probíhá'}</span>`;
+        const card = item.querySelector('.card');
+        if (card) card.appendChild(controls);
+      } else {
+        // Update status label
+        const label = existingControls.querySelector('.ws-status-label');
+        const endMinsActive = timeToMins(item.querySelector('.end-time').value);
+        const isLate = nowMins >= endMinsActive;
+        if (label) {
+          label.textContent = isLate ? '⚠ Zpoždění' : '▶ Probíhá';
+          label.className   = 'ws-status-label' + (isLate ? ' behind' : '');
+        }
+      }
+      // Scroll into view gently
+      item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      existingControls?.remove();
+    }
+  });
+}
+
+function wsSkip() {
+  // Skip: advance the active block's end time to now, cascade subsequent blocks
+  const now     = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const items   = Array.from(document.querySelectorAll('#flow-container .flow-item'));
+  const activeItem = items.find(item => item.classList.contains('ws-active'));
+  if (!activeItem) { tickWSMode(); return; }
+
+  activeItem.querySelector('.end-time').value = minsToTime(nowMins);
+  const dur = Math.max(0, nowMins - timeToMins(activeItem.querySelector('.start-time').value));
+  activeItem.querySelector('.duration-input').value = dur;
+
+  recalculateAll();
+  markDirty();
+  tickWSMode();
+}
+
+function wsNext() {
+  // Next: same as skip but also scrolls to next block
+  wsSkip();
+  const items      = Array.from(document.querySelectorAll('#flow-container .flow-item'));
+  const activeIdx  = items.findIndex(item => item.classList.contains('ws-active'));
+  const nextItem   = items[activeIdx + 1];
+  if (nextItem) setTimeout(() => nextItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 200);
+}
+
+/* ═══════════════════════════════════════════
+   31c. LEAD VISIBILITY TOGGLE
+═══════════════════════════════════════════ */
+function toggleLeadVisibility() {
+  wsLeadsHidden = !wsLeadsHidden;
+  document.body.classList.toggle('leads-hidden', wsLeadsHidden);
+  const btn = document.getElementById('toggleLeadsBtn');
+  if (btn) {
+    btn.style.opacity = wsLeadsHidden ? '0.45' : '';
+    btn.title = wsLeadsHidden ? 'Zobrazit Leadery' : 'Skrýt Leadery';
+  }
+}
+
+/* ═══════════════════════════════════════════
    31. KEYBOARD SHORTCUTS
 ═══════════════════════════════════════════ */
 document.addEventListener('keydown', async e => {
@@ -3384,6 +3811,7 @@ async function migrateFromLocalStorage() {
     await openDB();
     await migrateFromLocalStorage();
     await refreshIndex();
+    loadExportSettings();
 
     renderSidebar();
 
