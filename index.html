@@ -436,7 +436,7 @@
       background: transparent; border: none; font-family: var(--mono);
       font-size: 0.78rem; font-weight: 600; color: inherit;
       width: 36px; padding: 0; text-align: center; outline: none;
-      -moz-appearance: textfield;
+      -moz-appearance: textfield; appearance: textfield;
     }
     .duration-input::-webkit-inner-spin-button,
     .duration-input::-webkit-outer-spin-button { -webkit-appearance: none; }
@@ -560,6 +560,12 @@
     .status-dot-pill { width: 7px; height: 7px; border-radius: 50%; background: #6EE7B7; flex-shrink: 0; }
     .status-pill.saving .status-dot-pill { background: #FCD34D; animation: pulse-dot 1s ease-in-out infinite; }
     @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ─── PER-BLOCK DETAIL COLLAPSE ──────────── */
+    .flow-item.detail-hidden .card-content { max-height: 0 !important; opacity: 0 !important; pointer-events: none !important; overflow: hidden; }
+    .detail-toggle-btn svg { transition: transform 0.25s ease; }
+    .flow-item.detail-hidden .detail-toggle-btn svg { transform: rotate(180deg); }
+    body.compact-mode .detail-toggle-btn { display: none !important; }
 
     /* ─── COMPACT MODE ───────────────────────── */
     body.compact-mode .card-content { max-height: 0; opacity: 0; pointer-events: none; }
@@ -1330,13 +1336,13 @@
     </div>
     <div class="sidebar-agendas" id="sidebarList"></div>
     <div class="sidebar-footer">
-      <button class="sidebar-action-btn" onclick="openSimpleExportModal()">
+      <button class="sidebar-action-btn" onclick="downloadBackup()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Exportovat
+        Stáhnout zálohu
       </button>
     </div>
   </aside>
@@ -1417,6 +1423,12 @@
             <span class="file-chip-name" id="topbarFileName"></span>
           </div>
           <button class="btn btn-sm" id="topbarSaveBtn" onclick="saveCurrentFile()"></button>
+          <button class="btn btn-ghost btn-sm" onclick="openFileModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+            </svg>
+            Soubor
+          </button>
           <button class="btn btn-sm" onclick="openExportModal()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
@@ -1849,24 +1861,23 @@
   </div>
 </div>
 
-<!-- File & Export modal -->
-<div class="modal-overlay hidden" id="exportModal">
+<!-- File modal -->
+<div class="modal-overlay hidden" id="fileModal">
   <div class="modal-box modal-export">
     <div class="modal-header">
       <div class="modal-header-text">
-        <h3>Soubor &amp; Export</h3>
-        <p>Správa souborů a sdílení agendy</p>
+        <h3>Soubor</h3>
+        <p>Správa souborů agendy</p>
       </div>
-      <button class="modal-close" onclick="closeExportModal()">
+      <button class="modal-close" onclick="closeFileModal()">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
           <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
       </button>
     </div>
 
-    <!-- FILE OPERATIONS -->
     <div class="modal-section-label">Soubor</div>
-    <div class="export-grid export-grid-3" id="fileOpsGrid">
+    <div class="export-grid export-grid-3">
       <button class="export-card" onclick="openFromFile()">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1876,7 +1887,7 @@
         <div class="export-card-title">Otevřít soubor</div>
         <div class="export-card-desc">Načíst agendu z disku (.agenda, .json)</div>
       </button>
-      <button class="export-card" id="modalSaveBtn" onclick="saveCurrentFile(); closeExportModal();">
+      <button class="export-card" id="fileSaveBtn" onclick="saveCurrentFile(); closeFileModal();">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
@@ -1884,16 +1895,15 @@
             <polyline points="7 3 7 8 15 8"/>
           </svg>
         </div>
-        <div class="export-card-title">Uložit  <span style="font-size:0.65rem;font-weight:400;color:var(--muted);">Ctrl+S</span></div>
-        <div class="export-card-desc" id="modalSaveDesc">Zapsat do souboru na disku</div>
+        <div class="export-card-title">Uložit <span style="font-size:0.65rem;font-weight:400;color:var(--muted);">Ctrl+S</span></div>
+        <div class="export-card-desc" id="fileSaveDesc">Zapsat do souboru na disku</div>
       </button>
-      <button class="export-card" id="modalSaveAsBtn" onclick="saveAs(); closeExportModal();">
+      <button class="export-card" id="fileSaveAsBtn" onclick="saveAs(); closeFileModal();">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
             <polyline points="17 21 17 13 7 13 7 21"/>
             <polyline points="7 3 7 8 15 8"/>
-            <line x1="20" y1="8" x2="24" y2="8" style="display:none"/>
           </svg>
         </div>
         <div class="export-card-title">Uložit jako…</div>
@@ -1901,53 +1911,9 @@
       </button>
     </div>
 
-    <!-- SHARE & EXPORT -->
-    <div class="modal-section-label">Sdílení &amp; Export</div>
-    <div class="export-grid export-grid-3" id="shareOpsGrid">
-      <button class="export-card" onclick="exportCopyText()">
-        <div class="export-card-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
-          </svg>
-        </div>
-        <div class="export-card-title">Kopírovat jako text</div>
-        <div class="export-card-desc">Časy a názvy bloků do schránky</div>
-      </button>
-      <button class="export-card" onclick="openCopyTableModal()">
-        <div class="export-card-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-          </svg>
-        </div>
-        <div class="export-card-title" style="display:flex;align-items:center;gap:5px;width:100%;">
-          Kopírovat jako tabulku
-          <span class="export-card-gear" title="Nastavit sloupce">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/>
-            </svg>
-          </span>
-        </div>
-        <div class="export-card-desc">HTML tabulka pro Excel / PPT — nastavit sloupce</div>
-      </button>
-      <button class="export-card" onclick="openExportChoiceModal()">
-        <div class="export-card-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 6 2 18 2 18 9"/>
-            <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
-            <rect x="6" y="14" width="12" height="8"/>
-          </svg>
-        </div>
-        <div class="export-card-title">Export / Tisk</div>
-        <div class="export-card-desc">PDF, tisk nebo .agenda soubor</div>
-      </button>
-    </div>
-
-    <!-- BACKUP -->
     <div class="modal-section-label">Záloha</div>
     <div class="export-grid" style="grid-template-columns:1fr;margin-bottom:0;">
-      <button class="export-card" onclick="downloadBackup(); closeExportModal();">
+      <button class="export-card" onclick="downloadBackup(); closeFileModal();">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
@@ -1960,13 +1926,76 @@
       </button>
     </div>
 
-    <!-- API fallback notice — shown only in Firefox/Safari -->
     <div class="api-notice" id="apiNotice" style="display:none;">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Váš prohlížeč nepodporuje přímou práci se soubory. Soubory budou stahovány do složky Stažené soubory. Pro plnou podporu použijte Chrome nebo Edge.
     </div>
 
     <input type="file" id="importFileInput" accept=".agenda,.json" style="display:none;" onchange="importAgendaFallback(this)">
+  </div>
+</div>
+
+<!-- Share & Export modal -->
+<div class="modal-overlay hidden" id="exportModal">
+  <div class="modal-box modal-export">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Sdílet &amp; Exportovat</h3>
+        <p>Sdílení a export agendy</p>
+      </div>
+      <button class="modal-close" onclick="closeExportModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="modal-section-label">Sdílení</div>
+    <div class="export-grid" style="grid-template-columns:1fr 1fr;" id="shareOpsGrid">
+      <button class="export-card" onclick="exportCopyText()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Kopírovat jako text</div>
+        <div class="export-card-desc">Časy a názvy bloků do schránky</div>
+      </button>
+      <button class="export-card" onclick="exportCopyTable()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Kopírovat jako tabulku</div>
+        <div class="export-card-desc">HTML tabulka pro Excel / PPT</div>
+        <div style="margin-top:8px;font-size:0.7rem;font-weight:600;color:var(--primary);cursor:pointer;" onclick="event.stopPropagation();openCopyTableModal();">Upravit vzhled →</div>
+      </button>
+    </div>
+
+    <div class="modal-section-label" style="margin-top:16px;">Export / Tisk</div>
+    <div class="export-grid" style="grid-template-columns:1fr 1fr;" id="exportOpsGrid">
+      <button class="export-card" onclick="exportDetailedHTML()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Detailní PDF / Tisk</div>
+        <div class="export-card-desc">Celá agenda včetně obsahu bloků</div>
+      </button>
+      <button class="export-card" onclick="exportCompactHTML()">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Kompaktní PDF / Tisk</div>
+        <div class="export-card-desc">Jen časy a názvy — přehled dne</div>
+      </button>
+    </div>
   </div>
 </div>
 
@@ -2125,6 +2154,30 @@ let exportSettings = {
   columns:      { time: true, duration: true, title: true, lead: false },
   primaryColor: '#007E89',
 };
+
+/* ─── Undo history ─── */
+const UNDO_MAX   = 40;
+let _undoStack   = [];
+let _undoApplying = false;
+
+function pushUndo() {
+  if (_undoApplying || !currentAgendaId) return;
+  const snap = JSON.stringify(getCurrentEditorState());
+  if (_undoStack.length && _undoStack[_undoStack.length - 1] === snap) return;
+  _undoStack.push(snap);
+  if (_undoStack.length > UNDO_MAX) _undoStack.shift();
+}
+
+function performUndo() {
+  if (_undoStack.length < 2) { setStatus('saved', 'Nic k vrácení'); return; }
+  _undoStack.pop();
+  const prev = JSON.parse(_undoStack[_undoStack.length - 1]);
+  _undoApplying = true;
+  loadStateIntoEditor({ ...prev, id: currentAgendaId });
+  isDirty = true;
+  _undoApplying = false;
+  setStatus('saved', 'Akce zrušena');
+}
 
 /* ─── Workshop Mode state ─── */
 let wsMode          = false;
@@ -2290,7 +2343,7 @@ async function openSaveAsDialog(record) {
 }
 
 async function openFromFile() {
-  closeExportModal();
+  closeFileModal(); closeExportModal();
 
   if (!HAS_FS_API) {
     document.getElementById('importFileInput').click();
@@ -2445,7 +2498,7 @@ function importAgendaFallback(input) {
         const existing = items.length === 1 ? findDuplicate(data, null) : null;
 
         if (existing) {
-          closeExportModal();
+          closeFileModal(); closeExportModal();
           const action = await showDuplicateModal(existing, data, null);
           if (action === 'cancel') return;
           if (action === 'update') {
@@ -2480,7 +2533,7 @@ function importAgendaFallback(input) {
       await refreshIndex();
       if (lastId) await switchAgenda(lastId);
       setStatus('saved', items.length > 1 ? `Importováno ${items.length} agend` : 'Agenda importována');
-      closeExportModal();
+      closeFileModal(); closeExportModal();
     } catch {
       setStatus('saved', 'Chyba: neplatný .json soubor');
     }
@@ -2750,6 +2803,8 @@ function loadStateIntoEditor(record) {
   setupSortable();
   document.getElementById('topbarTitle') && (document.getElementById('topbarTitle').textContent = stripHtml(record.title || ''));
   isDirty = false;
+  _undoStack = [];
+  setTimeout(pushUndo, 0);
 }
 
 /* ═══════════════════════════════════════════
@@ -2835,6 +2890,9 @@ function buildBlockEl(block) {
           onclick="startWSModeFromBlock(this.closest('.flow-item').dataset.blockId)">
           <svg width="8" height="10" viewBox="0 0 10 12" fill="currentColor"><polygon points="0,0 10,6 0,12"/></svg>
         </button>
+        ${block.type !== 'break' ? `<button class="ctrl-btn detail-toggle-btn" title="Skrýt detail" onclick="toggleBlockDetail(this.closest('.flow-item'))">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </button>` : ''}
         <button class="ctrl-btn del" title="Smazat blok">${DEL_SVG}</button>
       </div>
       <div class="card-header">
@@ -3364,6 +3422,7 @@ function updateBadges() {
    22. ADD / DELETE BLOCKS
 ═══════════════════════════════════════════ */
 function addBlock(isBreak) {
+  pushUndo();
   const container = document.getElementById('flow-container');
   const items     = container.querySelectorAll('.flow-item');
   let lastEnd = '09:00';
@@ -3395,6 +3454,7 @@ function addBlock(isBreak) {
 }
 
 function deleteBlock(item) {
+  pushUndo();
   item.classList.add('block-exit');
   item.addEventListener('animationend', () => { item.remove(); recalculateAll(); markDirty(); }, { once: true });
 }
@@ -3433,9 +3493,26 @@ function toggleMobileSidebar() {
    23. COMPACT MODE
 ═══════════════════════════════════════════ */
 function toggleCompactMode() {
-  document.body.classList.toggle('compact-mode');
-  updateCompactBtn(document.body.classList.contains('compact-mode'));
+  const willBeCompact = !document.body.classList.contains('compact-mode');
+  document.body.classList.toggle('compact-mode', willBeCompact);
+  if (!willBeCompact) {
+    // Switching to detail mode — expand all individually collapsed blocks
+    document.querySelectorAll('.flow-item.detail-hidden').forEach(item => {
+      item.classList.remove('detail-hidden');
+      const btn = item.querySelector('.detail-toggle-btn');
+      if (btn) btn.title = 'Skrýt detail';
+    });
+  }
+  updateCompactBtn(willBeCompact);
   markDirty();
+}
+
+function toggleBlockDetail(item) {
+  if (document.body.classList.contains('compact-mode')) return;
+  const isNowHidden = !item.classList.contains('detail-hidden');
+  item.classList.toggle('detail-hidden', isNowHidden);
+  const btn = item.querySelector('.detail-toggle-btn');
+  if (btn) btn.title = isNowHidden ? 'Zobrazit detail' : 'Skrýt detail';
 }
 function updateCompactBtn(isCompact) {
   const eyeSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
@@ -3456,6 +3533,7 @@ function setupSortable() {
     ghostClass:        'sortable-ghost',
     chosenClass:       'sortable-chosen',
     dragClass:         'sortable-drag',
+    onStart() { pushUndo(); },
     onEnd() { recalculateAll(); markDirty(); },
   });
 }
@@ -3549,20 +3627,15 @@ function applyFmt(e, cmd, arg) {
 /* ═══════════════════════════════════════════
    27. FILE & EXPORT MODAL
 ═══════════════════════════════════════════ */
-function openExportModal() {
+/* ─── File Modal ─── */
+function openFileModal() {
   const hasAgenda  = !!currentAgendaId;
   const entry      = agendaIndex.find(e => e.id === currentAgendaId);
   const hasHandle  = entry?.hasHandle;
   const fileSynced = entry?.fileSynced;
 
-  // Disable share/export cards when no agenda is open
-  document.querySelectorAll('#shareOpsGrid .export-card').forEach(card => {
-    card.disabled = !hasAgenda;
-  });
-
-  // Update Save card appearance
-  const saveCard = document.getElementById('modalSaveBtn');
-  const saveDesc = document.getElementById('modalSaveDesc');
+  const saveCard = document.getElementById('fileSaveBtn');
+  const saveDesc = document.getElementById('fileSaveDesc');
   if (saveCard) {
     saveCard.disabled = !hasAgenda;
     if (hasHandle && !fileSynced) {
@@ -3574,12 +3647,25 @@ function openExportModal() {
         ? `Přepsat soubor ${entry.fileName}`
         : 'Vybrat umístění a uložit';
     }
-    document.getElementById('modalSaveAsBtn').disabled = !hasAgenda;
+    document.getElementById('fileSaveAsBtn').disabled = !hasAgenda;
   }
 
-  // Show API notice for unsupported browsers
   document.getElementById('apiNotice').style.display = HAS_FS_API ? 'none' : 'flex';
+  document.getElementById('fileModal').classList.remove('hidden');
+}
+function closeFileModal() {
+  document.getElementById('fileModal').classList.add('hidden');
+}
+document.getElementById('fileModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('fileModal')) closeFileModal();
+});
 
+/* ─── Share & Export Modal ─── */
+function openExportModal() {
+  const hasAgenda = !!currentAgendaId;
+  document.querySelectorAll('#shareOpsGrid .export-card, #exportOpsGrid .export-card').forEach(card => {
+    card.disabled = !hasAgenda;
+  });
   document.getElementById('exportModal').classList.remove('hidden');
 }
 function closeExportModal() {
@@ -3883,13 +3969,13 @@ async function exportCompactHTML() {
    28. EXPORT HTML BUILDER
 ═══════════════════════════════════════════ */
 function buildExportHTML(state, compact) {
-  const title    = escHtml(stripHtml(state.title    || ''));
-  const subtitle = escHtml(stripHtml(state.subtitle || ''));
+  const title    = escHtml(cleanText(state.title    || ''));
+  const subtitle = escHtml(cleanText(state.subtitle || ''));
 
   /* ── Blocks ── */
   const blocksHtml = (state.blocks || []).map(b => {
     const dur       = b.duration || Math.max(0, timeToMins(b.endTime) - timeToMins(b.startTime));
-    const titleText = escHtml(stripHtml(b.title));
+    const titleText = escHtml(cleanText(b.title));
 
     if (b.type === 'break') {
       return `
@@ -4334,6 +4420,9 @@ function tickWSMode() {
 
       const hasBack = wsHistory.length > 0;
 
+      const delayMins  = nowMins - plannedEndMins;
+      const statusText = isLate ? `⚠ +${delayMins} min` : '▶ Probíhá';
+
       if (!existingControls) {
         const controls = document.createElement('div');
         controls.className = 'ws-block-controls';
@@ -4341,14 +4430,14 @@ function tickWSMode() {
           <button class="ws-ctrl-btn secondary" onclick="${hasBack ? 'wsBack()' : ''}" ${hasBack ? '' : 'disabled'} title="Zpět na předchozí blok">← Zpět</button>
           <button class="ws-ctrl-btn" onclick="wsSkip()" title="Přeskočit — vyřadit z live běhu">Přeskočit</button>
           <button class="ws-ctrl-btn primary" onclick="wsNext()" title="Ukončit blok nyní a přejít na další">Další →</button>
-          <span class="ws-status-label${isLate ? ' behind' : ''}" id="wsStatusLabel">${isLate ? '⚠ Zpoždění' : '▶ Probíhá'}</span>`;
+          <span class="ws-status-label${isLate ? ' behind' : ''}" id="wsStatusLabel">${statusText}</span>`;
         item.querySelector('.card')?.appendChild(controls);
       } else {
         // Update status label and back button state
         const label   = existingControls.querySelector('.ws-status-label');
         const backBtn = existingControls.querySelector('.ws-ctrl-btn.secondary');
         if (label) {
-          label.textContent = isLate ? '⚠ Zpoždění' : '▶ Probíhá';
+          label.textContent = statusText;
           label.className   = 'ws-status-label' + (isLate ? ' behind' : '');
         }
         if (backBtn) {
@@ -4463,6 +4552,16 @@ document.addEventListener('keydown', async e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
     await saveCurrentFile();
+    return;
+  }
+  // Ctrl+Z / Cmd+Z — app-level undo (block structure); only when NOT in text editor
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    const active = document.activeElement;
+    const inTextField = active && (active.isContentEditable || active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
+    if (!inTextField) {
+      e.preventDefault();
+      performUndo();
+    }
   }
 });
 
