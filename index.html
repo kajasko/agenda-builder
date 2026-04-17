@@ -125,6 +125,17 @@
       font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
       text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px;
     }
+    /* ─── STATUS LEGEND ─────────────────────── */
+    .sidebar-legend {
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 0 10px 10px; margin-top: 2px;
+    }
+    .sidebar-legend-item {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 0.68rem; color: rgba(255,255,255,0.3); line-height: 1.2;
+    }
+    .sidebar-legend-item .sync-dot { flex-shrink: 0; animation: none !important; }
+
     .sidebar-agendas {
       flex: 1; overflow-y: auto; padding: 4px 8px;
       scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
@@ -935,6 +946,27 @@
     }
     .ws-status-label.behind { background: rgba(245,158,11,0.1); color: #B45309; border-color: rgba(245,158,11,0.25); }
 
+    /* ─── WS Delay / Gain badge in header bar ─── */
+    .ws-delay-badge {
+      font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+      padding: 2px 8px; border-radius: 10px; letter-spacing: 0.02em;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .ws-delay-badge:empty { display: none; }
+    .ws-delay-behind {
+      background: rgba(220,38,38,0.12); color: #DC2626;
+      border: 1px solid rgba(220,38,38,0.25);
+    }
+    .ws-delay-ahead {
+      background: rgba(52,211,153,0.12); color: #059669;
+      border: 1px solid rgba(52,211,153,0.3);
+    }
+
+    /* ─── WS Back btn disabled state ─── */
+    .ws-ctrl-btn.secondary:disabled {
+      opacity: 0.3; cursor: not-allowed; pointer-events: none;
+    }
+
     /* ─── WS live time badge (shown next to planned time in WS mode) ── */
     .ws-live-badge {
       display: none; align-items: center; gap: 4px;
@@ -1240,6 +1272,20 @@
     <div style="padding: 12px 8px 4px;">
       <div class="sidebar-section-label">Moje agendy</div>
     </div>
+    <div class="sidebar-legend">
+      <div class="sidebar-legend-item">
+        <span class="sync-dot synced"></span>
+        <span>Propojeno s diskem</span>
+      </div>
+      <div class="sidebar-legend-item">
+        <span class="sync-dot unsaved"></span>
+        <span>Neuložené změny</span>
+      </div>
+      <div class="sidebar-legend-item">
+        <span class="sync-dot local"></span>
+        <span>Uloženo pouze v appce</span>
+      </div>
+    </div>
     <div class="sidebar-agendas" id="sidebarList"></div>
     <div class="sidebar-footer">
       <button class="sidebar-action-btn" onclick="openExportModal()">
@@ -1322,6 +1368,7 @@
           <div class="ws-bar" id="wsBar">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span class="ws-clock" id="wsClockDisplay">--:--</span>
+            <span class="ws-delay-badge" id="wsDelayBadge"></span>
             <button class="ws-stop-btn" onclick="stopWSMode()" title="Ukončit WS Mode">
               <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -1514,6 +1561,134 @@
   </div>
 </div>
 
+<!-- ════ COPY AS TABLE MODAL ════ -->
+<div class="modal-overlay hidden" id="copyTableModal">
+  <div class="modal-box modal-settings">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Kopírovat jako tabulku</h3>
+        <p>Přizpůsobte sloupce a barevné schéma</p>
+      </div>
+      <button class="modal-close" onclick="closeCopyTableModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Sloupce tabulky</div>
+      <div class="settings-checkboxes">
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="ctColTime" checked>
+          <span class="settings-checkbox-label">Čas začátku</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="ctColDuration" checked>
+          <span class="settings-checkbox-label">Délka (min)</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="ctColTitle" checked>
+          <span class="settings-checkbox-label">Název bloku</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="ctColLead">
+          <span class="settings-checkbox-label">Lead / Facilitátor</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Časy v tabulce</div>
+      <div class="settings-checkboxes">
+        <label class="settings-checkbox-row">
+          <input type="radio" name="ctTimeMode" id="ctTimePlanned" value="planned" checked>
+          <span class="settings-checkbox-label">Plánované časy</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="radio" name="ctTimeMode" id="ctTimeLive" value="live">
+          <span class="settings-checkbox-label">Skutečné časy (Live WS)</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="radio" name="ctTimeMode" id="ctTimeBoth" value="both">
+          <span class="settings-checkbox-label">Obojí (plánované + skutečné)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-group" style="margin-bottom:0;">
+      <div class="settings-group-label">Primární barva</div>
+      <div class="color-picker-row">
+        <input type="color" id="ctColorPicker" value="#007E89" oninput="document.getElementById('ctColorValue').textContent = this.value">
+        <span class="color-picker-label">Barva nadpisů &amp; akcí</span>
+        <span class="color-picker-value" id="ctColorValue">#007E89</span>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn" onclick="closeCopyTableModal()">Zrušit</button>
+      <button class="btn btn-primary" onclick="executeCopyTable()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+        Kopírovat do schránky
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ EXPORT CHOICE MODAL ════ -->
+<div class="modal-overlay hidden" id="exportChoiceModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Export / Tisk</h3>
+        <p>Vyberte formát exportu</p>
+      </div>
+      <button class="modal-close" onclick="closeExportChoiceModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="export-grid" style="margin-top:4px;">
+      <button class="export-card" onclick="exportDetailedHTML(); closeExportChoiceModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Detailní PDF / Tisk</div>
+        <div class="export-card-desc">Celá agenda včetně obsahu bloků</div>
+      </button>
+      <button class="export-card" onclick="exportCompactHTML(); closeExportChoiceModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+            <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Kompaktní PDF / Tisk</div>
+        <div class="export-card-desc">Jen časy a názvy — přehled dne</div>
+      </button>
+      <button class="export-card" onclick="saveAs(); closeExportChoiceModal();">
+        <div class="export-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </div>
+        <div class="export-card-title">Stáhnout .agenda</div>
+        <div class="export-card-desc">Uložit soubor agendy na disk</div>
+      </button>
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn" onclick="closeExportChoiceModal()">Zrušit</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════ DRAG & DROP OVERLAY ════ -->
 <div class="drop-overlay" id="dropOverlay">
   <div class="drop-zone-inner">
@@ -1653,7 +1828,7 @@
 
     <!-- SHARE & EXPORT -->
     <div class="modal-section-label">Sdílení &amp; Export</div>
-    <div class="export-grid" id="shareOpsGrid">
+    <div class="export-grid export-grid-3" id="shareOpsGrid">
       <button class="export-card" onclick="exportCopyText()">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1663,7 +1838,7 @@
         <div class="export-card-title">Kopírovat jako text</div>
         <div class="export-card-desc">Časy a názvy bloků do schránky</div>
       </button>
-      <button class="export-card" onclick="exportCopyTable()">
+      <button class="export-card" onclick="openCopyTableModal()">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2"/>
@@ -1673,33 +1848,16 @@
         <div class="export-card-title">Kopírovat jako tabulku</div>
         <div class="export-card-desc">HTML tabulka pro Excel / PPT</div>
       </button>
-      <button class="export-card" onclick="openExportSettings(); closeExportModal();">
+      <button class="export-card" onclick="openExportChoiceModal()">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14M12 2v2M12 20v2M2 12h2M20 12h2"/>
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
           </svg>
         </div>
-        <div class="export-card-title">Nastavení exportu</div>
-        <div class="export-card-desc">Sloupce, barva, personalizace</div>
-      </button>
-      <button class="export-card" onclick="exportDetailedHTML()">
-        <div class="export-card-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-          </svg>
-        </div>
-        <div class="export-card-title">Export HTML (detailní)</div>
-        <div class="export-card-desc">Celá agenda včetně obsahu bloků</div>
-      </button>
-      <button class="export-card" onclick="exportCompactHTML()">
-        <div class="export-card-icon">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
-            <line x1="3" y1="6"  x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-          </svg>
-        </div>
-        <div class="export-card-title">Export HTML (kompaktní)</div>
-        <div class="export-card-desc">Jen časy a názvy — přehled dne</div>
+        <div class="export-card-title">Export / Tisk</div>
+        <div class="export-card-desc">PDF, tisk nebo .agenda soubor</div>
       </button>
     </div>
 
@@ -3399,6 +3557,114 @@ document.getElementById('exportSettingsModal').addEventListener('click', e => {
   if (e.target === document.getElementById('exportSettingsModal')) closeExportSettings();
 });
 
+/* ─── Copy as Table Modal ─── */
+function openCopyTableModal() {
+  // Populate from current exportSettings
+  const s = exportSettings;
+  document.getElementById('ctColTime').checked     = !!s.columns.time;
+  document.getElementById('ctColDuration').checked = !!s.columns.duration;
+  document.getElementById('ctColTitle').checked    = !!s.columns.title;
+  document.getElementById('ctColLead').checked     = !!s.columns.lead;
+  const picker = document.getElementById('ctColorPicker');
+  picker.value = s.primaryColor;
+  document.getElementById('ctColorValue').textContent = s.primaryColor;
+  const mode = s.timeMode || 'planned';
+  const modeEl = document.querySelector(`input[name="ctTimeMode"][value="${mode}"]`);
+  if (modeEl) modeEl.checked = true;
+  // Close export modal first, then open this one
+  closeExportModal();
+  document.getElementById('copyTableModal').classList.remove('hidden');
+}
+
+function closeCopyTableModal() {
+  document.getElementById('copyTableModal').classList.add('hidden');
+}
+
+function executeCopyTable() {
+  // Read settings from modal UI
+  const col = {
+    time:     document.getElementById('ctColTime').checked,
+    duration: document.getElementById('ctColDuration').checked,
+    title:    document.getElementById('ctColTitle').checked,
+    lead:     document.getElementById('ctColLead').checked,
+  };
+  const accent   = document.getElementById('ctColorPicker').value || '#007E89';
+  const timeModeEl = document.querySelector('input[name="ctTimeMode"]:checked');
+  const timeMode = timeModeEl ? timeModeEl.value : 'planned';
+
+  // Persist settings
+  exportSettings.columns      = col;
+  exportSettings.primaryColor = accent;
+  exportSettings.timeMode     = timeMode;
+  try { localStorage.setItem(EXPORT_SETTINGS_KEY, JSON.stringify(exportSettings)); } catch {}
+
+  // Build the HTML table
+  const state    = getCurrentEditorState();
+  const BORDER   = '1px solid #7F7F7F';
+  const narrowCol = `width:1%; white-space:nowrap; border:${BORDER}; padding:7px 11px; font-family:Arial,sans-serif; font-size:11px; vertical-align:middle;`;
+  const wideCol   = `border:${BORDER}; padding:7px 12px; font-family:Arial,sans-serif; font-size:11px; vertical-align:middle;`;
+
+  const blocks = state.blocks || [];
+  const hasAnyLead = blocks.some(b => cleanText(b.lead || '').length > 0);
+  const showLead   = col.lead && hasAnyLead;
+
+  function getTimeCell(b) {
+    const planned = b.startTime;
+    const live    = wsLiveTimes[b.id]?.start;
+    if (timeMode === 'live' && live)   return live;
+    if (timeMode === 'both' && live && live !== planned) return `${planned}<br><span style="color:#0D9488;font-size:10px;">Live: ${live}</span>`;
+    return planned;
+  }
+
+  let rows = '';
+  blocks.forEach(b => {
+    let cells = '';
+    if (col.time)     cells += `<td style="${narrowCol} font-weight:700; color:${accent};">${getTimeCell(b)}</td>`;
+    if (col.duration) cells += `<td style="${narrowCol} color:#6B7280;">${b.duration}&nbsp;min</td>`;
+    if (col.title)    cells += `<td style="${wideCol}">${escHtml(cleanText(b.title))}</td>`;
+    if (showLead)     cells += `<td style="${narrowCol} color:#6B7280;">${escHtml(cleanText(b.lead || ''))}</td>`;
+    rows += `<tr>${cells}</tr>`;
+  });
+
+  const html = `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;"><tbody>${rows}</tbody></table>`;
+
+  const clipItem = new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }) });
+  navigator.clipboard.write([clipItem])
+    .then(() => { closeCopyTableModal(); setStatus('saved', 'Tabulka zkopírována do schránky'); })
+    .catch(() => {
+      let tsv = '';
+      blocks.forEach(b => {
+        const parts = [];
+        if (col.time)     parts.push(b.startTime);
+        if (col.duration) parts.push(`${b.duration} min`);
+        if (col.title)    parts.push(cleanText(b.title));
+        if (showLead)     parts.push(cleanText(b.lead || ''));
+        tsv += parts.join('\t') + '\n';
+      });
+      closeCopyTableModal();
+      fallbackCopyText(tsv);
+    });
+}
+
+document.getElementById('copyTableModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('copyTableModal')) closeCopyTableModal();
+});
+
+/* ─── Export Choice Modal ─── */
+function openExportChoiceModal() {
+  if (!currentAgendaId) { setStatus('saved', 'Nejprve otevřete agendu'); return; }
+  closeExportModal();
+  document.getElementById('exportChoiceModal').classList.remove('hidden');
+}
+
+function closeExportChoiceModal() {
+  document.getElementById('exportChoiceModal').classList.add('hidden');
+}
+
+document.getElementById('exportChoiceModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('exportChoiceModal')) closeExportChoiceModal();
+});
+
 /* ─── Copy as plain text ─── */
 function exportCopyText() {
   const state = getCurrentEditorState();
@@ -3828,14 +4094,8 @@ function startWSMode(startBlockId) {
   if (startBlockId) {
     wsActiveBlockId = startBlockId;
   } else {
-    // Auto-detect: find the block whose time window contains now, else first block
-    let found = null;
-    for (const it of items) {
-      const sm = timeToMins(it.querySelector('.start-time').value);
-      const em = timeToMins(it.querySelector('.end-time').value);
-      if (nowMins >= sm && nowMins < em) { found = it.dataset.blockId; break; }
-    }
-    wsActiveBlockId = found || items[0]?.dataset.blockId || null;
+    // Default: always start from the very first block
+    wsActiveBlockId = items[0]?.dataset.blockId || null;
   }
 
   // Record live start for active block
@@ -3873,6 +4133,8 @@ function stopWSMode() {
   document.getElementById('wsBar').classList.remove('active');
   document.getElementById('wsStartBtn').style.display = '';
   document.getElementById('wsClockDisplay').textContent = '--:--';
+  const delayBadge = document.getElementById('wsDelayBadge');
+  if (delayBadge) { delayBadge.textContent = ''; delayBadge.className = 'ws-delay-badge'; }
 
   document.querySelectorAll('#flow-container .flow-item').forEach(item => {
     item.classList.remove('ws-active', 'ws-behind', 'ws-skipped');
@@ -3913,36 +4175,44 @@ function tickWSMode() {
       const isLate         = nowMins >= plannedEndMins;
       if (isLate) item.classList.add('ws-behind');
 
+      // Update global delay tracker badge in the WS bar
+      const delayBadge = document.getElementById('wsDelayBadge');
+      if (delayBadge) {
+        const diff = nowMins - plannedEndMins;
+        if (diff > 0) {
+          delayBadge.textContent = `Zpoždění: +${diff} min`;
+          delayBadge.className = 'ws-delay-badge ws-delay-behind';
+        } else if (diff < 0) {
+          delayBadge.textContent = `Náskok: ${diff} min`;
+          delayBadge.className = 'ws-delay-badge ws-delay-ahead';
+        } else {
+          delayBadge.textContent = 'Na čase';
+          delayBadge.className = 'ws-delay-badge';
+        }
+      }
+
       const hasBack = wsHistory.length > 0;
 
       if (!existingControls) {
         const controls = document.createElement('div');
         controls.className = 'ws-block-controls';
         controls.innerHTML = `
-          ${hasBack ? `<button class="ws-ctrl-btn secondary" onclick="wsBack()" title="Zpět na předchozí blok">← Zpět</button>` : ''}
+          <button class="ws-ctrl-btn secondary" onclick="${hasBack ? 'wsBack()' : ''}" ${hasBack ? '' : 'disabled'} title="Zpět na předchozí blok">← Zpět</button>
           <button class="ws-ctrl-btn" onclick="wsSkip()" title="Přeskočit — vyřadit z live běhu">Přeskočit</button>
           <button class="ws-ctrl-btn primary" onclick="wsNext()" title="Ukončit blok nyní a přejít na další">Další →</button>
           <span class="ws-status-label${isLate ? ' behind' : ''}" id="wsStatusLabel">${isLate ? '⚠ Zpoždění' : '▶ Probíhá'}</span>`;
         item.querySelector('.card')?.appendChild(controls);
       } else {
-        // Rebuild back button if history changed
-        const hasBackBtn = !!existingControls.querySelector('.ws-ctrl-btn.secondary');
-        if (hasBack !== hasBackBtn) {
-          existingControls.remove();
-          const controls = document.createElement('div');
-          controls.className = 'ws-block-controls';
-          controls.innerHTML = `
-            ${hasBack ? `<button class="ws-ctrl-btn secondary" onclick="wsBack()" title="Zpět na předchozí blok">← Zpět</button>` : ''}
-            <button class="ws-ctrl-btn" onclick="wsSkip()" title="Přeskočit — vyřadit z live běhu">Přeskočit</button>
-            <button class="ws-ctrl-btn primary" onclick="wsNext()" title="Ukončit blok nyní a přejít na další">Další →</button>
-            <span class="ws-status-label${isLate ? ' behind' : ''}" id="wsStatusLabel">${isLate ? '⚠ Zpoždění' : '▶ Probíhá'}</span>`;
-          item.querySelector('.card')?.appendChild(controls);
-        } else {
-          const label = existingControls.querySelector('.ws-status-label');
-          if (label) {
-            label.textContent = isLate ? '⚠ Zpoždění' : '▶ Probíhá';
-            label.className   = 'ws-status-label' + (isLate ? ' behind' : '');
-          }
+        // Update status label and back button state
+        const label   = existingControls.querySelector('.ws-status-label');
+        const backBtn = existingControls.querySelector('.ws-ctrl-btn.secondary');
+        if (label) {
+          label.textContent = isLate ? '⚠ Zpoždění' : '▶ Probíhá';
+          label.className   = 'ws-status-label' + (isLate ? ' behind' : '');
+        }
+        if (backBtn) {
+          backBtn.disabled = !hasBack;
+          backBtn.onclick  = hasBack ? wsBack : null;
         }
       }
       item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
