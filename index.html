@@ -126,13 +126,23 @@
       text-transform: uppercase; color: rgba(255,255,255,0.3); padding: 16px 16px 6px;
     }
     /* ─── STATUS LEGEND ─────────────────────── */
+    .sidebar-legend-box {
+      margin: 10px 10px 6px;
+      padding: 8px 10px 10px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      border-radius: var(--radius-sm);
+    }
+    .sidebar-legend-box-label {
+      font-size: 0.58rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: rgba(255,255,255,0.2); margin-bottom: 7px;
+    }
     .sidebar-legend {
-      display: flex; flex-direction: column; gap: 4px;
-      padding: 0 10px 10px; margin-top: 2px;
+      display: flex; flex-direction: column; gap: 5px;
     }
     .sidebar-legend-item {
       display: flex; align-items: center; gap: 7px;
-      font-size: 0.68rem; color: rgba(255,255,255,0.3); line-height: 1.2;
+      font-size: 0.68rem; color: rgba(255,255,255,0.35); line-height: 1.2;
     }
     .sidebar-legend-item .sync-dot { flex-shrink: 0; animation: none !important; }
 
@@ -997,6 +1007,35 @@
     body:not(.ws-running) .ws-start-here-btn { display: flex; }
     .ws-start-here-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
 
+    /* ─── WS PER-BLOCK DELAY BADGE ───────────── */
+    .ws-block-delay {
+      display: none; font-size: 0.66rem; font-weight: 700; font-family: var(--mono);
+      padding: 2px 7px; border-radius: 10px; white-space: nowrap;
+      flex-shrink: 0; align-items: center; gap: 3px;
+    }
+    .ws-block-delay.ws-bd-behind { display: inline-flex; background: rgba(220,38,38,0.12); color: #DC2626; border: 1px solid rgba(220,38,38,0.25); }
+    .ws-block-delay.ws-bd-ahead  { display: inline-flex; background: rgba(52,211,153,0.12); color: #059669; border: 1px solid rgba(52,211,153,0.3); }
+    .ws-block-delay.ws-bd-ontime { display: inline-flex; background: rgba(13,148,136,0.1); color: var(--primary); border: 1px solid rgba(13,148,136,0.2); }
+    body:not(.ws-running) .ws-block-delay { display: none !important; }
+
+    /* ─── SIMPLE EXPORT MODAL ─────────────────── */
+    .simple-export-select {
+      width: 100%; padding: 10px 36px 10px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-family: var(--font); font-size: 0.9rem;
+      color: var(--text); background: #fff; cursor: pointer; margin-bottom: 16px;
+      -webkit-appearance: none; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; background-size: 14px;
+      transition: border-color var(--transition), box-shadow var(--transition);
+    }
+    .simple-export-select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(13,148,136,0.12); }
+    .export-card-gear {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px; border-radius: 4px; margin-left: auto; flex-shrink: 0;
+      color: var(--muted); opacity: 0.6; transition: all var(--transition);
+    }
+    .export-card:hover .export-card-gear { opacity: 1; color: var(--primary); }
+
     /* ─── EXPORT SETTINGS MODAL ──────────────── */
     .modal-settings { max-width: 440px; }
     .settings-group { margin-bottom: 20px; }
@@ -1269,39 +1308,35 @@
         </button>
       </div>
     </div>
-    <div style="padding: 12px 8px 4px;">
-      <div class="sidebar-section-label">Moje agendy</div>
+    <div class="sidebar-legend-box">
+      <div class="sidebar-legend-box-label">Stav uložení</div>
+      <div class="sidebar-legend">
+        <div class="sidebar-legend-item">
+          <span class="sync-dot synced"></span>
+          <span>Propojeno s diskem</span>
+        </div>
+        <div class="sidebar-legend-item">
+          <span class="sync-dot unsaved"></span>
+          <span>Neuložené změny</span>
+        </div>
+        <div class="sidebar-legend-item">
+          <span class="sync-dot local"></span>
+          <span>Uloženo pouze v appce</span>
+        </div>
+      </div>
     </div>
-    <div class="sidebar-legend">
-      <div class="sidebar-legend-item">
-        <span class="sync-dot synced"></span>
-        <span>Propojeno s diskem</span>
-      </div>
-      <div class="sidebar-legend-item">
-        <span class="sync-dot unsaved"></span>
-        <span>Neuložené změny</span>
-      </div>
-      <div class="sidebar-legend-item">
-        <span class="sync-dot local"></span>
-        <span>Uloženo pouze v appce</span>
-      </div>
+    <div style="padding: 10px 8px 4px;">
+      <div class="sidebar-section-label">Moje agendy</div>
     </div>
     <div class="sidebar-agendas" id="sidebarList"></div>
     <div class="sidebar-footer">
-      <button class="sidebar-action-btn" onclick="openExportModal()">
+      <button class="sidebar-action-btn" onclick="openSimpleExportModal()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Soubor &amp; Export
-      </button>
-      <button class="sidebar-action-btn" onclick="window.print()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="6 9 6 2 18 2 18 9"/>
-          <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
-          <rect x="6" y="14" width="12" height="8"/>
-        </svg>
-        Tisk / PDF
+        Exportovat
       </button>
     </div>
   </aside>
@@ -1584,12 +1619,16 @@
           <span class="settings-checkbox-label">Čas začátku</span>
         </label>
         <label class="settings-checkbox-row">
+          <input type="checkbox" id="ctColEndTime">
+          <span class="settings-checkbox-label">Čas konce</span>
+        </label>
+        <label class="settings-checkbox-row">
           <input type="checkbox" id="ctColDuration" checked>
           <span class="settings-checkbox-label">Délka (min)</span>
         </label>
         <label class="settings-checkbox-row">
           <input type="checkbox" id="ctColTitle" checked>
-          <span class="settings-checkbox-label">Název bloku</span>
+          <span class="settings-checkbox-label">Název / Popis bloku</span>
         </label>
         <label class="settings-checkbox-row">
           <input type="checkbox" id="ctColLead">
@@ -1685,6 +1724,42 @@
     </div>
     <div class="modal-actions" style="margin-top:16px;">
       <button class="btn" onclick="closeExportChoiceModal()">Zrušit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ SIMPLE EXPORT MODAL ════ -->
+<div class="modal-overlay hidden" id="simpleExportModal">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Exportovat agendu</h3>
+        <p>Vyberte formát a stáhněte nebo vytiskněte</p>
+      </div>
+      <button class="modal-close" onclick="closeSimpleExportModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div style="margin: 4px 0 0;">
+      <div class="modal-section-label" style="margin-bottom:10px;">Formát exportu</div>
+      <select class="simple-export-select" id="simpleExportFormat">
+        <option value="detailed">Detailní PDF (Tisk) — celá agenda</option>
+        <option value="compact">Kompaktní PDF (Tisk) — jen časy a názvy</option>
+        <option value="agenda">Zdrojový soubor (.agenda) — stáhnout</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSimpleExportModal()">Zrušit</button>
+      <button class="btn btn-primary" onclick="executeSimpleExport()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Stáhnout / Tisk
+      </button>
     </div>
   </div>
 </div>
@@ -1845,8 +1920,16 @@
             <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
           </svg>
         </div>
-        <div class="export-card-title">Kopírovat jako tabulku</div>
-        <div class="export-card-desc">HTML tabulka pro Excel / PPT</div>
+        <div class="export-card-title" style="display:flex;align-items:center;gap:5px;width:100%;">
+          Kopírovat jako tabulku
+          <span class="export-card-gear" title="Nastavit sloupce">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M2 12h2M20 12h2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41"/>
+            </svg>
+          </span>
+        </div>
+        <div class="export-card-desc">HTML tabulka pro Excel / PPT — nastavit sloupce</div>
       </button>
       <button class="export-card" onclick="openExportChoiceModal()">
         <div class="export-card-icon">
@@ -2766,6 +2849,7 @@ function buildBlockEl(block) {
           <span class="time-sep">–</span>
           <span class="ws-live-end">--:--</span>
         </div>
+        <span class="ws-block-delay"></span>
         <div class="duration-wrap">
           <input type="number" class="duration-input" min="0" max="720" value="${dur}">
           <span class="duration-unit">min</span>
@@ -3515,7 +3599,7 @@ function loadExportSettings() {
     if (raw) exportSettings = { ...exportSettings, ...JSON.parse(raw) };
   } catch {}
   // Ensure all column keys exist (migration-safe)
-  exportSettings.columns      = { time: true, duration: true, title: true, lead: false, ...exportSettings.columns };
+  exportSettings.columns      = { time: true, endTime: false, duration: true, title: true, lead: false, ...exportSettings.columns };
   exportSettings.primaryColor = exportSettings.primaryColor || '#007E89';
   exportSettings.timeMode     = exportSettings.timeMode || 'planned'; // 'planned' | 'live' | 'both'
 }
@@ -3562,6 +3646,7 @@ function openCopyTableModal() {
   // Populate from current exportSettings
   const s = exportSettings;
   document.getElementById('ctColTime').checked     = !!s.columns.time;
+  document.getElementById('ctColEndTime').checked  = !!s.columns.endTime;
   document.getElementById('ctColDuration').checked = !!s.columns.duration;
   document.getElementById('ctColTitle').checked    = !!s.columns.title;
   document.getElementById('ctColLead').checked     = !!s.columns.lead;
@@ -3584,6 +3669,7 @@ function executeCopyTable() {
   // Read settings from modal UI
   const col = {
     time:     document.getElementById('ctColTime').checked,
+    endTime:  document.getElementById('ctColEndTime').checked,
     duration: document.getElementById('ctColDuration').checked,
     title:    document.getElementById('ctColTitle').checked,
     lead:     document.getElementById('ctColLead').checked,
@@ -3612,7 +3698,14 @@ function executeCopyTable() {
     const planned = b.startTime;
     const live    = wsLiveTimes[b.id]?.start;
     if (timeMode === 'live' && live)   return live;
-    if (timeMode === 'both' && live && live !== planned) return `${planned}<br><span style="color:#0D9488;font-size:10px;">Live: ${live}</span>`;
+    if (timeMode === 'both' && live && live !== planned) return `${planned}<br><span style="color:#007E89;font-size:10px;">Live: ${live}</span>`;
+    return planned;
+  }
+  function getEndTimeCell(b) {
+    const planned = b.endTime;
+    const live    = wsLiveTimes[b.id]?.end;
+    if (timeMode === 'live' && live)   return live;
+    if (timeMode === 'both' && live && live !== planned) return `${planned}<br><span style="color:#007E89;font-size:10px;">Live: ${live}</span>`;
     return planned;
   }
 
@@ -3620,6 +3713,7 @@ function executeCopyTable() {
   blocks.forEach(b => {
     let cells = '';
     if (col.time)     cells += `<td style="${narrowCol} font-weight:700; color:${accent};">${getTimeCell(b)}</td>`;
+    if (col.endTime)  cells += `<td style="${narrowCol} font-weight:700; color:${accent};">${getEndTimeCell(b)}</td>`;
     if (col.duration) cells += `<td style="${narrowCol} color:#6B7280;">${b.duration}&nbsp;min</td>`;
     if (col.title)    cells += `<td style="${wideCol}">${escHtml(cleanText(b.title))}</td>`;
     if (showLead)     cells += `<td style="${narrowCol} color:#6B7280;">${escHtml(cleanText(b.lead || ''))}</td>`;
@@ -3636,6 +3730,7 @@ function executeCopyTable() {
       blocks.forEach(b => {
         const parts = [];
         if (col.time)     parts.push(b.startTime);
+        if (col.endTime)  parts.push(b.endTime);
         if (col.duration) parts.push(`${b.duration} min`);
         if (col.title)    parts.push(cleanText(b.title));
         if (showLead)     parts.push(cleanText(b.lead || ''));
@@ -3663,6 +3758,25 @@ function closeExportChoiceModal() {
 
 document.getElementById('exportChoiceModal').addEventListener('click', e => {
   if (e.target === document.getElementById('exportChoiceModal')) closeExportChoiceModal();
+});
+
+/* ─── Simple Export Modal (sidebar shortcut) ─── */
+function openSimpleExportModal() {
+  if (!currentAgendaId) { setStatus('saved', 'Nejprve otevřete agendu'); return; }
+  document.getElementById('simpleExportModal').classList.remove('hidden');
+}
+function closeSimpleExportModal() {
+  document.getElementById('simpleExportModal').classList.add('hidden');
+}
+function executeSimpleExport() {
+  const fmt = document.getElementById('simpleExportFormat').value;
+  closeSimpleExportModal();
+  if (fmt === 'detailed')  exportDetailedHTML();
+  else if (fmt === 'compact') exportCompactHTML();
+  else if (fmt === 'agenda')  saveAs();
+}
+document.getElementById('simpleExportModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('simpleExportModal')) closeSimpleExportModal();
 });
 
 /* ─── Copy as plain text ─── */
@@ -4141,6 +4255,8 @@ function stopWSMode() {
     item.querySelector('.ws-block-controls')?.remove();
     const badge = item.querySelector('.ws-live-badge');
     if (badge) badge.classList.add('hidden');
+    const delayBadge = item.querySelector('.ws-block-delay');
+    if (delayBadge) { delayBadge.className = 'ws-block-delay'; delayBadge.textContent = ''; }
   });
 }
 
@@ -4166,6 +4282,31 @@ function tickWSMode() {
     item.classList.remove('ws-behind');
 
     wsUpdateLiveBadge(item);
+
+    // Per-block delay/gain badge
+    const blockDelayEl = item.querySelector('.ws-block-delay');
+    if (blockDelayEl) {
+      const lt = wsLiveTimes[id];
+      if (lt && lt.start) {
+        const liveMins    = timeToMins(lt.start);
+        const plannedMins = timeToMins(item.querySelector('.start-time').value);
+        const diff        = liveMins - plannedMins;
+        blockDelayEl.className = 'ws-block-delay';
+        if (diff > 0) {
+          blockDelayEl.textContent = `Zpoždění +${diff} min`;
+          blockDelayEl.classList.add('ws-bd-behind');
+        } else if (diff < 0) {
+          blockDelayEl.textContent = `Náskok ${Math.abs(diff)} min`;
+          blockDelayEl.classList.add('ws-bd-ahead');
+        } else {
+          blockDelayEl.textContent = 'Na čase';
+          blockDelayEl.classList.add('ws-bd-ontime');
+        }
+      } else {
+        blockDelayEl.className = 'ws-block-delay';
+        blockDelayEl.textContent = '';
+      }
+    }
 
     const existingControls = item.querySelector('.ws-block-controls');
 
