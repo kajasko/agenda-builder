@@ -565,10 +565,15 @@
     .flow-item.detail-hidden .card-content { max-height: 0 !important; opacity: 0 !important; pointer-events: none !important; overflow: hidden; }
     .detail-toggle-btn svg { transition: transform 0.25s ease; }
     .flow-item.detail-hidden .detail-toggle-btn svg { transform: rotate(180deg); }
-    body.compact-mode .detail-toggle-btn { display: none !important; }
 
     /* ─── COMPACT MODE ───────────────────────── */
     body.compact-mode .card-content { max-height: 0; opacity: 0; pointer-events: none; }
+    /* In compact mode the chevron points DOWN by default (content hidden → click to expand) */
+    body.compact-mode .detail-toggle-btn svg { transform: rotate(180deg); }
+    /* When a block is individually expanded in compact mode the chevron flips UP */
+    body.compact-mode .flow-item.detail-expanded .detail-toggle-btn svg { transform: rotate(0deg); }
+    /* Override compact-mode hiding for individually expanded blocks */
+    body.compact-mode .flow-item.detail-expanded .card-content { max-height: none !important; opacity: 1 !important; pointer-events: auto !important; }
     body.compact-mode .flow-wrapper::before { display: none; }
     body.compact-mode .flow-item::before { display: none; }
     body.compact-mode .summary-box { display: none !important; }
@@ -3547,16 +3552,27 @@ function toggleCompactMode() {
       const btn = item.querySelector('.detail-toggle-btn');
       if (btn) btn.title = 'Skrýt detail';
     });
+  } else {
+    // Switching to compact mode — collapse any individually expanded blocks
+    document.querySelectorAll('.flow-item.detail-expanded').forEach(item => {
+      item.classList.remove('detail-expanded');
+    });
   }
   updateCompactBtn(willBeCompact);
   markDirty();
 }
 
 function toggleBlockDetail(item) {
-  if (document.body.classList.contains('compact-mode')) return;
+  const btn = item.querySelector('.detail-toggle-btn');
+  if (document.body.classList.contains('compact-mode')) {
+    // In compact mode: toggle individually expanded state
+    const isExpanded = item.classList.toggle('detail-expanded');
+    if (btn) btn.title = isExpanded ? 'Skrýt detail' : 'Zobrazit detail';
+    return;
+  }
+  // In detail mode: toggle individually hidden state
   const isNowHidden = !item.classList.contains('detail-hidden');
   item.classList.toggle('detail-hidden', isNowHidden);
-  const btn = item.querySelector('.detail-toggle-btn');
   if (btn) btn.title = isNowHidden ? 'Zobrazit detail' : 'Skrýt detail';
 }
 function updateCompactBtn(isCompact) {
