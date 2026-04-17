@@ -1282,6 +1282,52 @@
 
       /* Export grid single column */
       .export-grid, .export-grid-3 { grid-template-columns: 1fr; }
+
+      /* Card header: prevent block-lead overflow */
+      .block-lead {
+        flex-shrink: 1;
+        min-width: 40px;
+        max-width: 130px;
+      }
+    }
+
+    /* ═══════════════════════════════════════════
+       SMALL MOBILE — card header grid layout
+    ═══════════════════════════════════════════ */
+    @media (max-width: 520px) {
+      /* Switch card-header to a 2-column grid so duration appears
+         below the time interval, and lead stays inside the card */
+      .card-header {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 5px 10px;
+        align-items: center;
+      }
+      body.compact-mode .card-header { display: grid; }
+
+      /* Col 1 row 1 — time interval */
+      .card-header .time-badge    { grid-column: 1; grid-row: 1; }
+      /* Col 1 row 2 — duration below time interval */
+      .card-header .duration-wrap { grid-column: 1; grid-row: 2; justify-self: start; }
+      /* Col 2 rows 1-2 — title spans both rows */
+      .card-header .block-title   {
+        grid-column: 2; grid-row: 1 / 3;
+        align-self: center;
+        min-width: 0;
+        flex: none;
+      }
+      /* Full-width row 3 — lead / facilitator */
+      .card-header .block-lead {
+        grid-column: 1 / -1; grid-row: 3;
+        margin-left: 0;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 1;
+      }
+      /* ws-live-badge spans full col when visible in ws mode */
+      .card-header .ws-live-badge { grid-column: 1 / -1; grid-row: 1; }
     }
   </style>
 </head>
@@ -2907,7 +2953,6 @@ function buildBlockEl(block) {
           <span class="time-sep">–</span>
           <span class="ws-live-end">--:--</span>
         </div>
-        <span class="ws-block-delay"></span>
         <div class="duration-wrap">
           <input type="number" class="duration-input" min="0" max="720" value="${dur}">
           <span class="duration-unit">min</span>
@@ -4341,8 +4386,6 @@ function stopWSMode() {
     item.querySelector('.ws-block-controls')?.remove();
     const badge = item.querySelector('.ws-live-badge');
     if (badge) badge.classList.add('hidden');
-    const delayBadge = item.querySelector('.ws-block-delay');
-    if (delayBadge) { delayBadge.className = 'ws-block-delay'; delayBadge.textContent = ''; }
   });
 }
 
@@ -4368,31 +4411,6 @@ function tickWSMode() {
     item.classList.remove('ws-behind');
 
     wsUpdateLiveBadge(item);
-
-    // Per-block delay/gain badge
-    const blockDelayEl = item.querySelector('.ws-block-delay');
-    if (blockDelayEl) {
-      const lt = wsLiveTimes[id];
-      if (lt && lt.start) {
-        const liveMins    = timeToMins(lt.start);
-        const plannedMins = timeToMins(item.querySelector('.start-time').value);
-        const diff        = liveMins - plannedMins;
-        blockDelayEl.className = 'ws-block-delay';
-        if (diff > 0) {
-          blockDelayEl.textContent = `Zpoždění +${diff} min`;
-          blockDelayEl.classList.add('ws-bd-behind');
-        } else if (diff < 0) {
-          blockDelayEl.textContent = `Náskok ${Math.abs(diff)} min`;
-          blockDelayEl.classList.add('ws-bd-ahead');
-        } else {
-          blockDelayEl.textContent = 'Na čase';
-          blockDelayEl.classList.add('ws-bd-ontime');
-        }
-      } else {
-        blockDelayEl.className = 'ws-block-delay';
-        blockDelayEl.textContent = '';
-      }
-    }
 
     const existingControls = item.querySelector('.ws-block-controls');
 
