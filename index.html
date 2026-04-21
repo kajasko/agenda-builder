@@ -1912,6 +1912,18 @@
   </div>
 </div>
 
+<!-- File changed on disk modal -->
+<div class="modal-overlay hidden" id="fileChangedModal">
+  <div class="modal-box">
+    <h3>Soubor byl změněn na disku</h3>
+    <p id="fileChangedModalText">Soubor na disku je novější než naposledy načtená verze.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="fileChangedChoose('dismiss')">Zrušit</button>
+      <button class="btn btn-primary" onclick="fileChangedChoose('reload')">Načíst z disku</button>
+    </div>
+  </div>
+</div>
+
 <!-- File modal -->
 <div class="modal-overlay hidden" id="fileModal">
   <div class="modal-box modal-export">
@@ -2271,11 +2283,12 @@ async function performIDBSave() {
     const updatedRecord = {
       ...(existingRec || {}),
       ...editorState,
-      id:         agendaId,
-      updated:    Date.now(),
-      fileHandle: existingRec?.fileHandle  ?? null,
-      fileName:   existingRec?.fileName    ?? null,
-      fileSynced: existingRec?.fileHandle  ? false : true,
+      id:              agendaId,
+      updated:         Date.now(),
+      fileHandle:      existingRec?.fileHandle     ?? null,
+      fileName:        existingRec?.fileName       ?? null,
+      fileSynced:      existingRec?.fileHandle     ? false : true,
+      fileMtimeAtSync: existingRec?.fileMtimeAtSync ?? null,
     };
 
     await dbPut(updatedRecord);
@@ -2318,6 +2331,12 @@ async function writeToHandle(record) {
     const writable   = await record.fileHandle.createWritable();
     await writable.write(JSON.stringify(exportData, null, 2));
     await writable.close();
+
+    // Capture mtime immediately after write so future disk-change checks have a baseline
+    try {
+      const written = await record.fileHandle.getFile();
+      record.fileMtimeAtSync = written.lastModified;
+    } catch { /* best-effort */ }
 
     record.fileSynced       = true;
     record.fileDisconnected = false;
@@ -2459,6 +2478,7 @@ async function openFromFile() {
             fileName:         handle.name,
             fileSynced:       true,
             fileDisconnected: false,
+            fileMtimeAtSync:  file.lastModified,
           };
           await dbPut(updatedRec);
           targetId = existing.id;
@@ -2477,6 +2497,7 @@ async function openFromFile() {
         fileName:         items.length === 1 ? handle.name : null,
         fileSynced:       true,
         fileDisconnected: false,
+        fileMtimeAtSync:  items.length === 1 ? file.lastModified : null,
       };
       await dbPut(record);
       lastId = newId;
@@ -2502,6 +2523,9 @@ async function openFromFile() {
 let _dupResolve = null;
 let _dupData    = null;
 let _dupHandle  = null;
+
+let _fileChangedResolve  = null;
+let _fileCheckInProgress = false;
 
 function findDuplicate(data, fileName) {
   const inTitle = stripHtml(data.title || '').trim().toLowerCase();
@@ -2530,6 +2554,82 @@ function closeDuplicateModal() {
 async function duplicateChoose(action) {
   document.getElementById('duplicateModal').classList.add('hidden');
   if (_dupResolve) { _dupResolve(action); _dupResolve = null; }
+}
+
+/* ─── File-changed-on-disk detection ─── */
+function showFileChangedModal(hasUnsaved) {
+  document.getElementById('fileChangedModalText').textContent = hasUnsaved
+    ? `Soubor na disku je novější než naposledy načtená verze. Máte neuložené změny — načtením z disku o ně přijdete.`
+    : `Soubor na disku je novější než naposledy načtená verze. Chcete načíst aktuální obsah z disku?`;
+  document.getElementById('fileChangedModal').classList.remove('hidden');
+  return new Promise(res => { _fileChangedResolve = res; });
+}
+
+function closeFileChangedModal() {
+  document.getElementById('fileChangedModal').classList.add('hidden');
+  if (_fileChangedResolve) { _fileChangedResolve('dismiss'); _fileChangedResolve = null; }
+}
+
+function fileChangedChoose(action) {
+  document.getElementById('fileChangedModal').classList.add('hidden');
+  if (_fileChangedResolve) { _fileChangedResolve(action); _fileChangedResolve = null; }
+}
+
+async function checkDiskModified(record) {
+  if (!record?.fileHandle || record.fileMtimeAtSync == null) return false;
+  try {
+    const ok = await verifyPermission(record.fileHandle, 'read');
+    if (!ok) return false;
+    const file = await record.fileHandle.getFile();
+    return file.lastModified > record.fileMtimeAtSync;
+  } catch {
+    return false;
+  }
+}
+
+async function handleDiskChange(record) {
+  if (_fileCheckInProgress) return;
+  _fileCheckInProgress = true;
+  try {
+    const isNewer = await checkDiskModified(record);
+    if (!isNewer) return;
+
+    const hasUnsaved = record.fileSynced === false;
+    const action = await showFileChangedModal(hasUnsaved);
+    if (action !== 'reload') return;
+
+    // Re-fetch file content after user confirmed
+    const ok = await verifyPermission(record.fileHandle, 'read');
+    if (!ok) { setStatus('saved', 'Přístup k souboru zamítnut'); return; }
+    const file = await record.fileHandle.getFile();
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    const updatedRec = {
+      ...record,
+      ...normalizeAgendaData(data),
+      id:               record.id,
+      updated:          Date.now(),
+      fileHandle:       record.fileHandle,
+      fileName:         record.fileName,
+      fileSynced:       true,
+      fileDisconnected: false,
+      fileMtimeAtSync:  file.lastModified,
+    };
+    await dbPut(updatedRec);
+    await refreshIndex();
+
+    if (record.id === currentAgendaId) {
+      loadStateIntoEditor(updatedRec);
+      updateTopbarState();
+      renderSidebar();
+      setStatus('saved', `Načteno z disku: ${record.fileName || record.fileHandle.name}`);
+    }
+  } catch (err) {
+    console.warn('[AgendaBuilder] handleDiskChange error:', err);
+  } finally {
+    _fileCheckInProgress = false;
+  }
 }
 
 /* Fallback import for Firefox/Safari */
@@ -2825,6 +2925,11 @@ async function switchAgenda(id) {
   if (layout && layout.classList.contains('sidebar-open') &&
       window.matchMedia('(max-width: 768px)').matches) {
     toggleMobileSidebar();
+  }
+
+  // Best-effort: check if file on disk was modified externally since last sync
+  if (record.fileHandle) {
+    handleDiskChange(record).catch(() => {});
   }
 }
 
@@ -3737,6 +3842,15 @@ document.getElementById('exportModal').addEventListener('click', e => {
 });
 document.getElementById('duplicateModal').addEventListener('click', e => {
   if (e.target === document.getElementById('duplicateModal')) closeDuplicateModal();
+});
+document.getElementById('fileChangedModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('fileChangedModal')) closeFileChangedModal();
+});
+
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !currentAgendaId) return;
+  const record = await dbGet(currentAgendaId);
+  if (record?.fileHandle) handleDiskChange(record).catch(() => {});
 });
 
 /* ─── Export Settings Modal ─── */
@@ -4929,6 +5043,7 @@ if ('launchQueue' in window) {
             fileName:         handle.name,
             fileSynced:       true,
             fileDisconnected: false,
+            fileMtimeAtSync:  file.lastModified,
           };
           await dbPut(updatedRec);
           await refreshIndex();
@@ -4943,11 +5058,12 @@ if ('launchQueue' in window) {
       const newId  = genId();
       const record = {
         ...normalizeAgendaData(data),
-        id:         newId,
-        updated:    Date.now(),
-        fileHandle: handle,
-        fileName:   handle.name,
-        fileSynced: true,
+        id:              newId,
+        updated:         Date.now(),
+        fileHandle:      handle,
+        fileName:        handle.name,
+        fileSynced:      true,
+        fileMtimeAtSync: file.lastModified,
       };
       await dbPut(record);
       await refreshIndex();
