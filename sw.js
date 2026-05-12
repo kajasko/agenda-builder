@@ -4,7 +4,7 @@
    Hosted at: /agenda-builder/
 ═══════════════════════════════════════════ */
 
-const CACHE_NAME = 'agenda-builder-v4';
+const CACHE_NAME = 'agenda-builder-v5';
 const BASE       = '/agenda-builder';
 const APP_SHELL  = [
   BASE + '/',
