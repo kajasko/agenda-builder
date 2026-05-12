@@ -1395,7 +1395,13 @@
     </div>
     <div class="sidebar-agendas" id="sidebarList"></div>
     <div class="sidebar-footer">
-      <button class="sidebar-action-btn" onclick="downloadBackup()">
+      <button type="button" class="sidebar-action-btn" id="appUpdateBtn" onclick="checkForAppUpdate()" title="Stáhne nejnovější verzi z webu. Agendy a nastavení v aplikaci zůstanou zachované (IndexedDB a localStorage se nemazají).">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+        </svg>
+        Aktualizovat aplikaci
+      </button>
+      <button type="button" class="sidebar-action-btn" onclick="downloadBackup()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -5087,6 +5093,62 @@ async function installPWA() {
     deferredInstallPrompt = null;
     const btn = document.getElementById('pwaInstallBtn');
     if (btn) btn.classList.remove('visible');
+  }
+}
+
+/* ═══ Manual app update (PWA / SW cache) — does NOT clear IndexedDB or localStorage ═══ */
+let appRefreshReloadPending = false;
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!appRefreshReloadPending) return;
+    appRefreshReloadPending = false;
+    window.location.reload();
+  });
+}
+
+async function clearAgendaBuilderCachesOnly() {
+  if (!('caches' in window)) return;
+  const keys = await caches.keys();
+  await Promise.all(
+    keys.filter(k => k.startsWith('agenda-builder')).map(k => caches.delete(k))
+  );
+}
+
+async function checkForAppUpdate() {
+  const btn = document.getElementById('appUpdateBtn');
+  const prevHtml = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Kontroluji…';
+  }
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        appRefreshReloadPending = true;
+        await reg.update();
+        await new Promise(r => setTimeout(r, 650));
+        if (appRefreshReloadPending) {
+          appRefreshReloadPending = false;
+          await clearAgendaBuilderCachesOnly();
+          setStatus('saved', 'Načítám nejnovější verzi z webu…', 3500);
+          window.location.reload();
+          return;
+        }
+        return;
+      }
+    }
+    await clearAgendaBuilderCachesOnly();
+    setStatus('saved', 'Načítám nejnovější verzi z webu…', 3500);
+    window.location.reload();
+  } catch (e) {
+    appRefreshReloadPending = false;
+    console.warn('[AgendaBuilder] checkForAppUpdate:', e);
+    setStatus('saved', 'Aktualizace se nepovedla — zkus to prosím znovu.', 5000);
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = prevHtml;
+    }
   }
 }
 
