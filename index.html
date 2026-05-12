@@ -466,7 +466,7 @@
       padding-bottom: 10px; margin-bottom: 10px;
       border-bottom: 1px solid var(--border);
     }
-    .ctb-btn {
+    .ctb-btn { 
       width: 28px; height: 26px; border: none; background: transparent;
       color: var(--muted); cursor: pointer; border-radius: 5px;
       font-family: var(--font); font-size: 0.8rem;
@@ -475,6 +475,10 @@
     }
     .ctb-btn:hover { background: var(--bg); color: var(--text); }
     .ctb-btn.active { background: var(--primary-light); color: var(--primary); }
+    .ctb-btn--callout  { color: var(--primary); }
+    .ctb-btn--callout:hover  { background: var(--primary-light); color: var(--primary); }
+    .ctb-btn--activity { color: #4B5563; }
+    .ctb-btn--activity:hover { background: #F3F4F6; color: #111827; }
     .ctb-sep { width: 1px; height: 16px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
 
     /* ─── SINGLE CONTENTEDITABLE EDITOR ─────── */
@@ -544,6 +548,10 @@
       display: flex; align-items: center; justify-content: center; transition: all 0.15s;
     }
     .fmt-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .fmt-btn--callout  { color: #5EEAD4; }
+    .fmt-btn--callout:hover  { background: rgba(13,148,136,0.25); color: #99F6E4; }
+    .fmt-btn--activity { color: #9CA3AF; }
+    .fmt-btn--activity:hover { background: rgba(255,255,255,0.12); color: #D1D5DB; }
     .fmt-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.15); margin: 0 2px; }
 
     /* ─── STATUS PILL ────────────────────────── */
@@ -1659,6 +1667,77 @@
   </div>
 </div>
 
+<!-- ════ COPY AS TEXT MODAL ════ -->
+<div class="modal-overlay hidden" id="copyTextModal">
+  <div class="modal-box modal-settings">
+    <div class="modal-header">
+      <div class="modal-header-text">
+        <h3>Kopírovat jako text</h3>
+        <p>Vyberte, co se má dostat do schránky</p>
+      </div>
+      <button class="modal-close" onclick="closeCopyTextModal()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Sloupce</div>
+      <div class="settings-checkboxes">
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="txtColTime" checked>
+          <span class="settings-checkbox-label">Čas začátku</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="txtColEndTime">
+          <span class="settings-checkbox-label">Čas konce</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="txtColDuration" checked>
+          <span class="settings-checkbox-label">Délka v závorkách, např. (30 min)</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="txtColTitle" checked>
+          <span class="settings-checkbox-label">Název bloku</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="checkbox" id="txtColDetail" onchange="document.getElementById('txtDetailModeGroup').style.display=this.checked?'block':'none'">
+          <span class="settings-checkbox-label">Detail bloku (obsah editoru)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-group" id="txtDetailModeGroup" style="display:none;">
+      <div class="settings-group-label">Co zahrnout z detailu</div>
+      <div class="settings-checkboxes">
+        <label class="settings-checkbox-row">
+          <input type="radio" name="txtDetailMode" id="txtDetailAll" value="all" checked>
+          <span class="settings-checkbox-label">Celý text (bez formátování)</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="radio" name="txtDetailMode" id="txtDetailCallout" value="callout">
+          <span class="settings-checkbox-label">Jen Callout bloky (zelené)</span>
+        </label>
+        <label class="settings-checkbox-row">
+          <input type="radio" name="txtDetailMode" id="txtDetailActivity" value="activity">
+          <span class="settings-checkbox-label">Jen Aktivita bloky (šedé)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:20px;">
+      <button class="btn" onclick="closeCopyTextModal()">Zrušit</button>
+      <button class="btn btn-primary" onclick="executeCopyText()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+        </svg>
+        Kopírovat do schránky
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ════ COPY AS TABLE MODAL ════ -->
 <div class="modal-overlay hidden" id="copyTableModal">
   <div class="modal-box modal-settings">
@@ -1848,20 +1927,21 @@
 
 <!-- Floating format toolbar -->
 <div class="format-toolbar" id="formatToolbar">
+  <!-- Group 1: text formatting -->
   <button class="fmt-btn" onmousedown="applyFmt(event,'bold')" title="Tučné (Ctrl+B)"><b>B</b></button>
   <button class="fmt-btn" onmousedown="applyFmt(event,'italic')" title="Kurzíva (Ctrl+I)"><i>I</i></button>
   <div class="fmt-sep"></div>
-  <button class="fmt-btn" onmousedown="applyFmt(event,'formatBlock','H3')" title="Nadpis">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>
-    </svg>
+  <!-- Group 2: block type -->
+  <button class="fmt-btn" onmousedown="applyFmt(event,'formatBlock','H3')" title="Nadpis H3">
+    <span style="font-size:0.67rem;font-weight:800;letter-spacing:-0.03em;line-height:1">H3</span>
   </button>
-  <button class="fmt-btn" onmousedown="applyFmt(event,'formatBlock','P')" title="Odstavec">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h6"/>
+  <button class="fmt-btn" onmousedown="applyFmt(event,'formatBlock','P')" title="Odstavec (¶)">
+    <svg width="11" height="12" viewBox="0 0 11 12" fill="currentColor">
+      <path d="M4.5 0h4.5v1.2H8v10.8H6.8V1.2H5.7v10.8H4.5V7.2C2 7.2 0 5.5 0 3.6S2 0 4.5 0z"/>
     </svg>
   </button>
   <div class="fmt-sep"></div>
+  <!-- Group 3: list -->
   <button class="fmt-btn" onmousedown="applyFmt(event,'insertUnorderedList')" title="Odrážky">
     <svg width="13" height="11" viewBox="0 0 13 11" fill="currentColor">
       <circle cx="1.5" cy="1.5" r="1.5"/><rect x="4.5" y="0.5" width="8.5" height="2" rx="1"/>
@@ -1869,17 +1949,20 @@
       <circle cx="1.5" cy="9.5" r="1.5"/><rect x="4.5" y="8.5" width="8.5" height="2" rx="1"/>
     </svg>
   </button>
-  <button class="fmt-btn" onmousedown="applyFmt(event,'callout')" title="Callout (zelený blok)">
+  <div class="fmt-sep"></div>
+  <!-- Group 4: block insertion -->
+  <button class="fmt-btn fmt-btn--callout" onmousedown="applyFmt(event,'callout')" title="Callout (zelený blok)">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
     </svg>
   </button>
-  <button class="fmt-btn" onmousedown="applyFmt(event,'activity')" title="Aktivita (šedý blok)">
+  <button class="fmt-btn fmt-btn--activity" onmousedown="applyFmt(event,'activity')" title="Aktivita / Cvičení (šedý blok)">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
       <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
     </svg>
   </button>
   <div class="fmt-sep"></div>
+  <!-- Group 5: clear -->
   <button class="fmt-btn" onmousedown="applyFmt(event,'removeFormat')" title="Smazat formátování">
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
       <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -2015,14 +2098,15 @@
 
     <div class="modal-section-label">Sdílení</div>
     <div class="export-grid" style="grid-template-columns:1fr 1fr;" id="shareOpsGrid">
-      <button class="export-card" onclick="exportCopyText()">
+      <button class="export-card" onclick="openCopyTextModal()">
         <div class="export-card-icon">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
           </svg>
         </div>
         <div class="export-card-title">Kopírovat jako text</div>
-        <div class="export-card-desc">Časy a názvy bloků do schránky</div>
+        <div class="export-card-desc">Časy, názvy a volitelně obsah bloků</div>
+        <div style="margin-top:8px;font-size:0.7rem;font-weight:600;color:var(--primary);cursor:pointer;">Upravit výběr →</div>
       </button>
       <button class="export-card" onclick="exportCopyTable()">
         <div class="export-card-icon">
@@ -2214,8 +2298,10 @@ let lastFocusedEditor = null;
 /* ─── Export Settings (persisted to localStorage) ─── */
 const EXPORT_SETTINGS_KEY = 'agendabuilder_export_settings';
 let exportSettings = {
-  columns:      { time: true, duration: true, title: true, lead: false },
-  primaryColor: '#007E89',
+  columns:        { time: true, duration: true, title: true, lead: false },
+  textColumns:    { time: true, endTime: false, duration: true, title: true, detail: false },
+  textDetailMode: 'all',   // 'all' | 'callout' | 'activity'
+  primaryColor:   '#007E89',
 };
 
 /* ─── Undo history ─── */
@@ -3123,22 +3209,28 @@ function buildCardToolbar(editor) {
   const toolbar = document.createElement('div');
   toolbar.className = 'card-toolbar';
 
-  const SVG_HEADING   = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>`;
-  const SVG_PARAGRAPH = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h6"/></svg>`;
-  const SVG_LIST      = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="6" r="1.8"/><rect x="9" y="4.5" width="11" height="3" rx="1.5"/><circle cx="4" cy="12" r="1.8"/><rect x="9" y="10.5" width="11" height="3" rx="1.5"/><circle cx="4" cy="18" r="1.8"/><rect x="9" y="16.5" width="11" height="3" rx="1.5"/></svg>`;
-  const SVG_CALLOUT   = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
-  const SVG_ACTIVITY  = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+  // H3: distinct text label; P: paragraph pilcrow symbol (¶)
+  const HTML_HEADING   = `<span style="font-size:0.67rem;font-weight:800;letter-spacing:-0.03em;line-height:1">H3</span>`;
+  const SVG_PARAGRAPH  = `<svg width="11" height="12" viewBox="0 0 11 12" fill="currentColor"><path d="M4.5 0h4.5v1.2H8v10.8H6.8V1.2H5.7v10.8H4.5V7.2C2 7.2 0 5.5 0 3.6S2 0 4.5 0z"/></svg>`;
+  const SVG_LIST       = `<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="4" cy="6" r="1.8"/><rect x="9" y="4.5" width="11" height="3" rx="1.5"/><circle cx="4" cy="12" r="1.8"/><rect x="9" y="10.5" width="11" height="3" rx="1.5"/><circle cx="4" cy="18" r="1.8"/><rect x="9" y="16.5" width="11" height="3" rx="1.5"/></svg>`;
+  const SVG_CALLOUT    = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`;
+  const SVG_ACTIVITY   = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+  const SVG_REMOVE_FMT = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
 
+  // Order matches floating toolbar: B, I | H3, P | List | Callout, Activity | removeFormat
   const items = [
-    { title: 'Nadpis (H3)',      svg: SVG_HEADING,   action: () => insertHeadingInEditor(editor) },
-    { title: 'Odstavec',         svg: SVG_PARAGRAPH, action: () => insertParagraphInEditor(editor) },
+    { title: 'Tučné (Ctrl+B)',                html: '<b style="font-size:0.82rem">B</b>',    action: () => { editor.focus(); document.execCommand('bold');   markDirty(); } },
+    { title: 'Kurzíva (Ctrl+I)',               html: '<i style="font-size:0.82rem">I</i>',    action: () => { editor.focus(); document.execCommand('italic'); markDirty(); } },
     { sep: true },
-    { title: 'Tučné (Ctrl+B)',   html: '<b style="font-size:0.82rem">B</b>', action: () => { editor.focus(); document.execCommand('bold');   markDirty(); } },
-    { title: 'Kurzíva (Ctrl+I)', html: '<i style="font-size:0.82rem">I</i>', action: () => { editor.focus(); document.execCommand('italic'); markDirty(); } },
+    { title: 'Nadpis H3',                      html: HTML_HEADING,                             action: () => insertHeadingInEditor(editor) },
+    { title: 'Odstavec (¶)',                   svg:  SVG_PARAGRAPH,                            action: () => insertParagraphInEditor(editor) },
     { sep: true },
-    { title: 'Odrážky',                    svg: SVG_LIST,     action: () => { editor.focus(); document.execCommand('insertUnorderedList'); markDirty(); } },
-    { title: 'Callout (zelený blok)',       svg: SVG_CALLOUT,  action: () => insertCustomBlock(editor, 'cb-callout') },
-    { title: 'Aktivita / Cvičení (šedý blok)', svg: SVG_ACTIVITY, action: () => insertCustomBlock(editor, 'cb-activity') },
+    { title: 'Odrážky',                        svg:  SVG_LIST,      action: () => { editor.focus(); document.execCommand('insertUnorderedList'); markDirty(); } },
+    { sep: true },
+    { title: 'Callout (zelený blok)',           svg:  SVG_CALLOUT,   cls: 'ctb-btn--callout',  action: () => insertCustomBlock(editor, 'cb-callout') },
+    { title: 'Aktivita / Cvičení (šedý blok)', svg:  SVG_ACTIVITY,  cls: 'ctb-btn--activity', action: () => insertCustomBlock(editor, 'cb-activity') },
+    { sep: true },
+    { title: 'Smazat formátování',             svg:  SVG_REMOVE_FMT, action: () => { editor.focus(); document.execCommand('removeFormat'); markDirty(); } },
   ];
 
   items.forEach(item => {
@@ -3149,7 +3241,7 @@ function buildCardToolbar(editor) {
       return;
     }
     const btn = document.createElement('button');
-    btn.className = 'ctb-btn';
+    btn.className = 'ctb-btn' + (item.cls ? ' ' + item.cls : '');
     btn.title     = item.title;
     btn.innerHTML = item.svg || item.html || '';
     btn.addEventListener('mousedown', e => { e.preventDefault(); item.action(); });
@@ -3426,6 +3518,53 @@ function insertCustomBlock(editor, blockClass) {
   editor.focus();
   const sel = window.getSelection();
 
+  // ── B2: Non-collapsed selection → wrap selected content into the new block ──
+  if (sel && sel.rangeCount && !sel.isCollapsed) {
+    const range = sel.getRangeAt(0);
+    if (editor.contains(range.commonAncestorContainer)) {
+      const fragment = range.extractContents();
+      const block = document.createElement('div');
+      block.className = blockClass;
+      // If fragment contains only inline/text nodes, wrap them in <p>
+      const hasBlock = Array.from(fragment.childNodes).some(n =>
+        n.nodeType === Node.ELEMENT_NODE &&
+        ['P','H3','H1','H2','H4','DIV','UL','OL','BLOCKQUOTE'].includes(n.nodeName)
+      );
+      if (!hasBlock && fragment.textContent.trim()) {
+        const innerP = document.createElement('p');
+        innerP.appendChild(fragment);
+        block.appendChild(innerP);
+      } else {
+        block.appendChild(fragment);
+        // Ensure there is at least one child element
+        if (!block.firstElementChild) {
+          const innerP = document.createElement('p');
+          innerP.innerHTML = '<br>';
+          block.appendChild(innerP);
+        }
+      }
+      range.insertNode(block);
+      // Clean up empty text nodes left by extractContents
+      if (block.previousSibling && block.previousSibling.nodeType === Node.TEXT_NODE &&
+          !block.previousSibling.textContent.trim()) {
+        block.previousSibling.remove();
+      }
+      const followP = document.createElement('p');
+      followP.innerHTML = '<br>';
+      block.after(followP);
+      // Place cursor at end of inserted content
+      const target = block.lastElementChild || block;
+      const nr = document.createRange();
+      nr.selectNodeContents(target);
+      nr.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(nr);
+      markDirty();
+      return;
+    }
+  }
+
+  // ── Collapsed cursor / no selection ──
   const block = document.createElement('div');
   block.className = blockClass;
   const innerP = document.createElement('p');
@@ -3450,12 +3589,28 @@ function insertCustomBlock(editor, blockClass) {
     } else {
       let topEl = node;
       while (topEl.parentNode !== editor && topEl !== editor) topEl = topEl.parentNode;
+
       if (topEl !== editor) {
+        // Normal case: cursor is inside a top-level block element
         topEl.after(block);
         block.after(followP);
       } else {
-        editor.appendChild(block);
-        editor.appendChild(followP);
+        // ── B1: cursor is directly inside editor (no top-level block parent) ──
+        // Use range position to find where to insert relative to editor children.
+        const anchorNode = range.startContainer;
+        if (anchorNode === editor) {
+          // range.startOffset is a child index
+          const refChild = editor.childNodes[range.startOffset] || null;
+          editor.insertBefore(block, refChild);
+          block.after(followP);
+        } else if (anchorNode.parentNode === editor) {
+          // Text node or inline directly in editor
+          anchorNode.after(block);
+          block.after(followP);
+        } else {
+          editor.appendChild(block);
+          editor.appendChild(followP);
+        }
       }
     }
   }
@@ -3860,9 +4015,11 @@ function loadExportSettings() {
     if (raw) exportSettings = { ...exportSettings, ...JSON.parse(raw) };
   } catch {}
   // Ensure all column keys exist (migration-safe)
-  exportSettings.columns      = { time: true, endTime: false, duration: true, title: true, lead: false, ...exportSettings.columns };
-  exportSettings.primaryColor = exportSettings.primaryColor || '#007E89';
-  exportSettings.timeMode     = exportSettings.timeMode || 'planned'; // 'planned' | 'live' | 'both'
+  exportSettings.columns        = { time: true, endTime: false, duration: true, title: true, lead: false, ...exportSettings.columns };
+  exportSettings.textColumns    = { time: true, endTime: false, duration: true, title: true, detail: false, ...exportSettings.textColumns };
+  exportSettings.textDetailMode = exportSettings.textDetailMode || 'all';
+  exportSettings.primaryColor   = exportSettings.primaryColor || '#007E89';
+  exportSettings.timeMode       = exportSettings.timeMode || 'planned'; // 'planned' | 'live' | 'both'
 }
 
 function openExportSettings() {
@@ -4040,22 +4197,119 @@ document.getElementById('simpleExportModal').addEventListener('click', e => {
   if (e.target === document.getElementById('simpleExportModal')) closeSimpleExportModal();
 });
 
-/* ─── Copy as plain text ─── */
-function exportCopyText() {
+/* ─── Plain-text helpers ─── */
+
+/*
+ * htmlToStructuredText — converts HTML to plain text preserving block structure.
+ * Block elements (P, H3, LI, DIV, BLOCKQUOTE) each become a line.
+ * BR → newline. Inline elements pass through as flat text.
+ */
+function htmlToStructuredText(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html || '';
+  const BLOCK_TAGS = new Set(['P','H3','H1','H2','H4','H5','H6','DIV','BLOCKQUOTE','LI']);
+
+  function walk(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent.replace(/[\u00a0\u202f\u2009\u200b]/g, ' ');
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) return '';
+    const tag = node.nodeName.toUpperCase();
+    if (tag === 'BR') return '\n';
+    const inner = Array.from(node.childNodes).map(walk).join('');
+    if (tag === 'LI') return '• ' + inner.trim() + '\n';
+    if (BLOCK_TAGS.has(tag)) return inner.trim() + '\n';
+    return inner;
+  }
+
+  return walk(tmp).replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/*
+ * extractDetailText — returns plain text from block contentHtml,
+ * filtered by mode: 'all' | 'callout' | 'activity'.
+ */
+function extractDetailText(contentHtml, mode) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = contentHtml || '';
+  if (mode === 'callout') {
+    return Array.from(tmp.querySelectorAll('.cb-callout'))
+      .map(el => htmlToStructuredText(el.innerHTML))
+      .filter(Boolean).join('\n');
+  }
+  if (mode === 'activity') {
+    return Array.from(tmp.querySelectorAll('.cb-activity'))
+      .map(el => htmlToStructuredText(el.innerHTML))
+      .filter(Boolean).join('\n');
+  }
+  // 'all' — full structured text
+  return htmlToStructuredText(contentHtml);
+}
+
+/* ─── Copy as text modal ─── */
+function openCopyTextModal() {
+  const s = exportSettings;
+  const tc = s.textColumns;
+  document.getElementById('txtColTime').checked     = !!tc.time;
+  document.getElementById('txtColEndTime').checked  = !!tc.endTime;
+  document.getElementById('txtColDuration').checked = !!tc.duration;
+  document.getElementById('txtColTitle').checked    = !!tc.title;
+  document.getElementById('txtColDetail').checked   = !!tc.detail;
+  document.getElementById('txtDetailModeGroup').style.display = tc.detail ? 'block' : 'none';
+  const modeEl = document.querySelector(`input[name="txtDetailMode"][value="${s.textDetailMode || 'all'}"]`);
+  if (modeEl) modeEl.checked = true;
+  closeExportModal();
+  document.getElementById('copyTextModal').classList.remove('hidden');
+}
+
+function closeCopyTextModal() {
+  document.getElementById('copyTextModal').classList.add('hidden');
+}
+
+document.getElementById('copyTextModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('copyTextModal')) closeCopyTextModal();
+});
+
+function executeCopyText() {
+  const col = {
+    time:     document.getElementById('txtColTime').checked,
+    endTime:  document.getElementById('txtColEndTime').checked,
+    duration: document.getElementById('txtColDuration').checked,
+    title:    document.getElementById('txtColTitle').checked,
+    detail:   document.getElementById('txtColDetail').checked,
+  };
+  const detailModeEl = document.querySelector('input[name="txtDetailMode"]:checked');
+  const detailMode   = detailModeEl ? detailModeEl.value : 'all';
+
+  // Persist
+  exportSettings.textColumns    = col;
+  exportSettings.textDetailMode = detailMode;
+  try { localStorage.setItem(EXPORT_SETTINGS_KEY, JSON.stringify(exportSettings)); } catch {}
+
   const state = getCurrentEditorState();
-  const col   = exportSettings.columns;
   let text = cleanText(state.title) + '\n' + cleanText(state.subtitle) + '\n\n';
   (state.blocks || []).forEach(b => {
     const parts = [];
-    if (col.time)     parts.push(`${b.startTime} – ${b.endTime}`);
+    if (col.time)    parts.push(b.startTime);
+    if (col.endTime) parts.push(`– ${b.endTime}`);
     if (col.duration) parts.push(`(${b.duration} min)`);
-    if (col.title)    parts.push(cleanText(b.title));
-    if (col.lead && b.lead) parts.push(`[${cleanText(b.lead)}]`);
-    text += parts.join('  ') + '\n';
+    if (col.title)   parts.push(cleanText(b.title));
+    let row = parts.join('  ');
+    if (col.detail && b.contentHtml) {
+      const detail = extractDetailText(b.contentHtml, detailMode);
+      if (detail) row += '\n' + detail.split('\n').map(l => '  ' + l).join('\n');
+    }
+    text += row + '\n';
   });
+
   navigator.clipboard.writeText(text)
-    .then(() => { setStatus('saved', 'Zkopírováno do schránky'); closeExportModal(); })
+    .then(() => { setStatus('saved', 'Zkopírováno do schránky'); closeCopyTextModal(); })
     .catch(() => fallbackCopyText(text));
+}
+
+/* ─── Copy as plain text (legacy direct path — kept for backwards compat) ─── */
+function exportCopyText() {
+  openCopyTextModal();
 }
 
 /* ─── Copy as HTML table (clean, styled, auto-width narrow cols, wide title) ─── */
